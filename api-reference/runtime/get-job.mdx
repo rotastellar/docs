@@ -1,0 +1,98 @@
+---
+title: Get Job
+api: GET /v1/runtime/jobs/{job_id}
+description: "Get status and result of an inference job"
+---
+
+<Warning>
+  **Coming Q2 2026** — This endpoint is a design preview.
+</Warning>
+
+## Request
+
+<ParamField path="job_id" type="string" required>
+  Job identifier from submit response
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl https://api.rotastellar.com/v1/runtime/jobs/job_xyz789 \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+# Get job status
+job = client.runtime.job("job_xyz789")
+print(f"Status: {job.status}")
+
+# Wait for result
+result = job.result(timeout=30)
+print(result.text)
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const job = await client.runtime.job('job_xyz789');
+console.log(`Status: ${job.status}`);
+
+const result = await job.result({ timeout: 30000 });
+console.log(result.text);
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response (Completed)
+{
+  "id": "job_xyz789",
+  "status": "completed",
+  "node": "orbital-leo-1",
+  "created_at": "2026-01-21T12:00:00Z",
+  "completed_at": "2026-01-21T12:00:01.5Z",
+  "result": {
+    "text": "The telemetry analysis shows...",
+    "tokens_generated": 256,
+    "latency_ms": 1450,
+    "energy_wh": 0.42
+  },
+  "adaptations": {
+    "precision": "int8",
+    "layers_skipped": 4,
+    "context_used": 4096
+  },
+  "resilience": {
+    "errors_detected": 2,
+    "errors_corrected": 2,
+    "confidence": 0.998
+  }
+}
+```
+
+```json Response (Pending)
+{
+  "id": "job_xyz789",
+  "status": "pending",
+  "node": "orbital-leo-1",
+  "created_at": "2026-01-21T12:00:00Z",
+  "position_in_queue": 3,
+  "eta_ms": 2500
+}
+```
+
+```json Response (Running)
+{
+  "id": "job_xyz789",
+  "status": "running",
+  "node": "orbital-leo-1",
+  "created_at": "2026-01-21T12:00:00Z",
+  "started_at": "2026-01-21T12:00:00.5Z",
+  "progress_percent": 65
+}
+```
+</ResponseExample>

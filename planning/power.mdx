@@ -1,0 +1,231 @@
+---
+title: Power Budgeting
+description: "Plan power generation and consumption across orbit"
+---
+
+# Power Budgeting
+
+Model power generation, storage, and consumption for orbital compute systems across the full orbital cycle.
+
+<Info>
+  **Status:** Early Access — [Request API key](https://rotastellar.com/early-access/)
+</Info>
+
+## Overview
+
+Power in orbit is fundamentally different from Earth:
+
+- **Solar only** — Primary power source is photovoltaic
+- **Eclipse periods** — No generation during Earth shadow
+- **Battery cycling** — Must store enough for eclipse
+- **Degradation** — Solar cells degrade over mission life
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+power = client.planning.power(
+    orbit="LEO-550",
+    compute_load_w=500,
+    duty_cycle=0.8,
+    mission_life_years=5
+)
+
+print(f"Solar array: {power.solar_array_m2} m2")
+print(f"Battery: {power.battery_kwh} kWh")
+print(f"Available during eclipse: {power.eclipse_power_w}W")
+print(f"EOL margin: {power.eol_margin_percent}%")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const power = await client.planning.power({
+  orbit: 'LEO-550',
+  computeLoadW: 500,
+  dutyCycle: 0.8,
+  missionLifeYears: 5
+});
+
+console.log(`Solar array: ${power.solarArrayM2} m2`);
+console.log(`Battery: ${power.batteryKwh} kWh`);
+```
+
+```bash cURL
+curl https://api.rotastellar.com/v1/planning/power \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orbit": "LEO-550",
+    "compute_load_w": 500,
+    "duty_cycle": 0.8,
+    "mission_life_years": 5
+  }'
+```
+</CodeGroup>
+
+## Parameters
+
+<ParamField body="orbit" type="string" required>
+  Orbit specification (e.g., `LEO-550`, `GEO`)
+</ParamField>
+
+<ParamField body="compute_load_w" type="number" required>
+  Peak compute power consumption in watts
+</ParamField>
+
+<ParamField body="duty_cycle" type="number" default="1.0">
+  Fraction of time compute is active (0-1)
+</ParamField>
+
+<ParamField body="mission_life_years" type="number" default="5">
+  Mission duration for degradation calculations
+</ParamField>
+
+<ParamField body="housekeeping_w" type="number" default="50">
+  Non-compute power (thermal, comms, ADCS)
+</ParamField>
+
+<ParamField body="battery_dod" type="number" default="0.3">
+  Maximum battery depth of discharge (0-1)
+</ParamField>
+
+## Response
+
+```json
+{
+  "solar_array": {
+    "area_m2": 3.2,
+    "power_bol_w": 960,
+    "power_eol_w": 768,
+    "degradation_percent_per_year": 2.5
+  },
+  "battery": {
+    "capacity_kwh": 0.85,
+    "cycles_per_day": 15.5,
+    "eol_capacity_percent": 80
+  },
+  "power_profile": {
+    "sunlit_available_w": 680,
+    "eclipse_available_w": 420,
+    "average_available_w": 580
+  },
+  "margins": {
+    "bol_margin_percent": 25,
+    "eol_margin_percent": 12
+  },
+  "recommendations": [
+    "Consider 10% larger array for operational margin",
+    "Battery supports 5-year mission with 80% EOL capacity"
+  ],
+  "orbit_profile": [
+    {"phase": "sunlit", "duration_min": 57, "power_w": 680},
+    {"phase": "eclipse", "duration_min": 35, "power_w": 420}
+  ]
+}
+```
+
+## Power Budget Breakdown
+
+### Typical LEO Power Budget
+
+| Subsystem | Power (W) | Notes |
+|-----------|-----------|-------|
+| Compute (peak) | 500 | GPU/TPU workloads |
+| Compute (idle) | 50 | Standby mode |
+| Thermal | 30-100 | Heaters during eclipse |
+| Communications | 20-50 | Varies with data rate |
+| ADCS | 10-20 | Attitude control |
+| Housekeeping | 20-30 | Avionics, sensors |
+
+### Power Modes
+
+```python
+# Model different operating modes
+power = client.planning.power(
+    orbit="LEO-550",
+    modes=[
+        {"name": "full_compute", "power_w": 500, "duration_percent": 60},
+        {"name": "reduced", "power_w": 200, "duration_percent": 30},
+        {"name": "idle", "power_w": 50, "duration_percent": 10}
+    ],
+    mission_life_years=5
+)
+```
+
+## Eclipse Operations
+
+During eclipse, power is limited to battery capacity:
+
+```python
+power = client.planning.power(
+    orbit="LEO-550",
+    compute_load_w=500,
+    eclipse_strategy="reduced"  # or "full", "suspend"
+)
+
+# Check eclipse power availability
+if power.eclipse_available_w < 500:
+    print(f"Must reduce to {power.eclipse_available_w}W during eclipse")
+```
+
+### Eclipse Strategies
+
+| Strategy | Description | Use Case |
+|----------|-------------|----------|
+| `full` | Maintain full power | Large battery, short eclipse |
+| `reduced` | Reduce compute during eclipse | Balanced approach |
+| `suspend` | Suspend compute, housekeeping only | Minimal battery |
+
+## Degradation Over Mission Life
+
+Solar arrays and batteries degrade over time:
+
+```python
+# Compare BOL vs EOL power
+power = client.planning.power(
+    orbit="LEO-550",
+    compute_load_w=500,
+    mission_life_years=7
+)
+
+print(f"Year 1 available: {power.solar_array.power_bol_w}W")
+print(f"Year 7 available: {power.solar_array.power_eol_w}W")
+print(f"Degradation: {power.solar_array.degradation_percent_per_year}%/year")
+```
+
+## Design Recommendations
+
+<AccordionGroup>
+  <Accordion title="Solar array sizing">
+    Size for end-of-life (EOL) power needs plus 10-20% margin.
+    Account for degradation: ~2.5%/year in LEO due to radiation.
+  </Accordion>
+
+  <Accordion title="Battery sizing">
+    Size for eclipse duration + margin. Limit depth of discharge
+    to 30-40% for long cycle life.
+  </Accordion>
+
+  <Accordion title="Operational flexibility">
+    Design for multiple power modes. Ability to reduce compute
+    load extends operational flexibility.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Thermal Simulation" icon="temperature-high" href="/planning/thermal">
+    Ensure thermal design matches power budget
+  </Card>
+  <Card title="Feasibility Analysis" icon="calculator" href="/planning/feasibility">
+    Complete system feasibility check
+  </Card>
+</CardGroup>

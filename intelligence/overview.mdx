@@ -1,0 +1,174 @@
+---
+title: Orbital Intelligence Overview
+description: "Track, analyze, and understand objects in Earth orbit"
+---
+
+# Orbital Intelligence
+
+<Info>
+  **Status:** Early Access — [Request API key](https://rotastellar.com/early-access/)
+</Info>
+
+Orbital Intelligence provides real-time situational awareness for objects in Earth orbit. Track satellites, analyze conjunction risks, and detect anomalous behavior.
+
+## Capabilities
+
+<CardGroup cols={2}>
+  <Card title="Satellite Tracking" icon="satellite" href="/intelligence/satellites">
+    Real-time positions for 10,000+ active satellites
+  </Card>
+  <Card title="Conjunction Analysis" icon="triangle-exclamation" href="/intelligence/conjunctions">
+    Collision probability and avoidance recommendations
+  </Card>
+  <Card title="Pattern Detection" icon="chart-line" href="/intelligence/patterns">
+    Detect anomalies and maneuvers in satellite behavior
+  </Card>
+  <Card title="Webhooks" icon="bell" href="/intelligence/webhooks">
+    Real-time alerts for events of interest
+  </Card>
+</CardGroup>
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+# Track the International Space Station
+iss = client.intelligence.satellite("ISS")
+pos = iss.position()
+
+print(f"Location: {pos.lat}, {pos.lon}")
+print(f"Altitude: {pos.altitude_km} km")
+print(f"Velocity: {pos.velocity_km_s} km/s")
+
+# Check for upcoming conjunctions
+conjunctions = client.intelligence.conjunctions(
+    satellite="ISS",
+    threshold_km=5.0,
+    days_ahead=7
+)
+
+for conj in conjunctions:
+    print(f"TCA: {conj.tca}")
+    print(f"Miss distance: {conj.miss_km} km")
+    print(f"Probability: {conj.probability}")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+// Track ISS
+const iss = await client.intelligence.satellite('ISS');
+const pos = await iss.position();
+
+console.log(`Location: ${pos.lat}, ${pos.lon}`);
+console.log(`Altitude: ${pos.altitudeKm} km`);
+
+// Check conjunctions
+const conjunctions = await client.intelligence.conjunctions({
+  satellite: 'ISS',
+  thresholdKm: 5.0,
+  daysAhead: 7
+});
+
+for (const conj of conjunctions) {
+  console.log(`TCA: ${conj.tca}, Miss: ${conj.missKm} km`);
+}
+```
+
+```bash cURL
+# Get ISS position
+curl https://api.rotastellar.com/v1/satellites/ISS \
+  -H "Authorization: Bearer rs_your_api_key"
+
+# Check conjunctions
+curl "https://api.rotastellar.com/v1/conjunctions?satellite=ISS&threshold_km=5&days_ahead=7" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+</CodeGroup>
+
+## Data Sources
+
+| Source | Coverage | Update Frequency |
+|--------|----------|------------------|
+| Space-Track | Global catalog | Every 8 hours |
+| Commercial | Active satellites | Real-time |
+| Proprietary | Enhanced accuracy | Continuous |
+
+## Catalog Coverage
+
+- **10,000+** active satellites
+- **35,000+** debris objects tracked
+- **45,000+** total tracked objects
+- **Global** coverage from multiple sensor networks
+
+## Use Cases
+
+### Fleet Management
+
+Track your entire satellite constellation and monitor health:
+
+```python
+# Get all satellites in your constellation
+constellation = client.intelligence.satellites(
+    operator="YourCompany",
+    constellation="YourConstellation"
+)
+
+for sat in constellation:
+    pos = sat.position()
+    print(f"{sat.name}: {pos.altitude_km}km, {pos.phase}")
+```
+
+### Collision Avoidance
+
+Get alerts when conjunction risks exceed thresholds:
+
+```python
+# Set up conjunction monitoring
+watch = client.intelligence.watch(
+    satellites=["SAT-001", "SAT-002", "SAT-003"],
+    threshold_km=1.0,
+    callback_url="https://your-app.com/alerts"
+)
+```
+
+### Anomaly Detection
+
+Detect unexpected maneuvers or behavior changes:
+
+```python
+anomalies = client.intelligence.patterns.anomalies(
+    satellite="TARGET-SAT",
+    lookback_days=30
+)
+
+for anomaly in anomalies:
+    print(f"{anomaly.timestamp}: {anomaly.type}")
+    print(f"Description: {anomaly.description}")
+```
+
+## Rate Limits
+
+| Endpoint | Free | Pro | Enterprise |
+|----------|------|-----|------------|
+| Get Satellite | 10/min | 100/min | Custom |
+| List Satellites | 5/min | 50/min | Custom |
+| Conjunctions | 5/min | 50/min | Custom |
+| Patterns | 2/min | 20/min | Custom |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Satellite Tracking" icon="satellite" href="/intelligence/satellites">
+    Deep dive into satellite tracking API
+  </Card>
+  <Card title="Conjunction Analysis" icon="triangle-exclamation" href="/intelligence/conjunctions">
+    Learn about collision risk assessment
+  </Card>
+</CardGroup>

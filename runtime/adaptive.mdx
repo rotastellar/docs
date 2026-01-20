@@ -1,0 +1,301 @@
+---
+title: Adaptive Runtime
+description: "Energy and thermal-aware inference execution"
+---
+
+# Adaptive Runtime
+
+<Warning>
+  **Coming Q2 2026** — This is a design preview.
+  [Request early access](https://rotastellar.com/early-access/) to be notified when available.
+</Warning>
+
+## Overview
+
+The Adaptive Runtime dynamically adjusts inference execution to stay within energy and thermal constraints. Instead of failing when resources are limited, it gracefully degrades while maintaining output quality bounds.
+
+## Key Capabilities
+
+- **Dynamic precision** — Switch between FP16/INT8/INT4 based on power
+- **Layer skipping** — Skip non-critical layers when energy-constrained
+- **Context adaptation** — Reduce context window under pressure
+- **Thermal throttling** — Automatic frequency scaling near thermal limits
+- **Quality guarantees** — Bounded degradation with quality metrics
+
+## How It Works
+
+```
+Input Request
+     │
+     ▼
+┌─────────────────────────────────────────┐
+│           Adaptive Runtime               │
+│                                         │
+│  ┌─────────────┐    ┌─────────────┐    │
+│  │   Energy    │    │   Thermal   │    │
+│  │   Monitor   │    │   Monitor   │    │
+│  └──────┬──────┘    └──────┬──────┘    │
+│         │                  │           │
+│         ▼                  ▼           │
+│  ┌─────────────────────────────────┐   │
+│  │      Adaptation Controller       │   │
+│  │                                 │   │
+│  │  • Precision selection         │   │
+│  │  • Layer skip decisions        │   │
+│  │  • Context window sizing       │   │
+│  │  • Batch size adjustment       │   │
+│  └─────────────────────────────────┘   │
+│                   │                    │
+│                   ▼                    │
+│  ┌─────────────────────────────────┐   │
+│  │        Inference Engine         │   │
+│  └─────────────────────────────────┘   │
+└─────────────────────────────────────────┘
+     │
+     ▼
+Output + Adaptation Report
+```
+
+## API Preview
+
+### Submit with Energy Constraints
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="Summarize this document...",
+    constraints={
+        "energy_budget_wh": 0.5,      # Max energy for this request
+        "thermal_limit_c": 75,         # Throttle above this temp
+        "quality": "best_effort"       # or "exact"
+    }
+)
+
+print(f"Response: {result.text}")
+print(f"Energy used: {result.energy_wh} Wh")
+print(f"Adaptations applied: {result.adaptations}")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const result = await client.runtime.generate({
+  model: 'llama-70b',
+  prompt: 'Summarize this document...',
+  constraints: {
+    energyBudgetWh: 0.5,
+    thermalLimitC: 75,
+    quality: 'best_effort'
+  }
+});
+
+console.log(`Response: ${result.text}`);
+console.log(`Adaptations: ${JSON.stringify(result.adaptations)}`);
+```
+
+```bash cURL
+curl -X POST https://api.rotastellar.com/v1/runtime/generate \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama-70b",
+    "prompt": "Summarize this document...",
+    "constraints": {
+      "energy_budget_wh": 0.5,
+      "thermal_limit_c": 75,
+      "quality": "best_effort"
+    }
+  }'
+```
+</CodeGroup>
+
+### Adaptation Report
+
+Every response includes what adaptations were applied:
+
+```json
+{
+  "text": "The document discusses...",
+  "energy_wh": 0.42,
+  "latency_ms": 156,
+  "adaptations": {
+    "precision": "int8",           // Reduced from FP16
+    "layers_skipped": 4,           // Out of 80 total
+    "context_used": 4096,          // Reduced from 8192
+    "batch_size": 1                // No batching
+  },
+  "quality_metrics": {
+    "estimated_perplexity_delta": 0.02,
+    "confidence": 0.94
+  }
+}
+```
+
+### Configure Adaptation Policies
+
+Set global adaptation preferences:
+
+```python
+client.runtime.configure(
+    adaptive={
+        # Precision bounds
+        "precision_floor": "int8",        # Never go below INT8
+        "precision_ceiling": "fp16",      # Start at FP16
+
+        # Layer skipping
+        "layer_skip_max": 0.2,            # Skip up to 20% of layers
+        "skip_strategy": "importance",    # or "uniform", "early", "late"
+
+        # Context management
+        "context_min": 2048,              # Minimum context window
+        "context_strategy": "truncate",   # or "summarize", "slide"
+
+        # Thermal management
+        "thermal_threshold_c": 70,        # Start throttling
+        "thermal_critical_c": 85,         # Hard limit
+
+        # Quality guarantees
+        "quality_floor": 0.9              # Minimum acceptable quality score
+    }
+)
+```
+
+## Adaptation Strategies
+
+### Precision Scaling
+
+| Precision | Relative Energy | Relative Quality |
+|-----------|-----------------|------------------|
+| FP16 | 1.0x | 1.0 |
+| INT8 | 0.5x | 0.98 |
+| INT4 | 0.3x | 0.92 |
+
+```python
+# Force specific precision
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    constraints={
+        "precision": "int8"  # Fixed precision
+    }
+)
+```
+
+### Layer Skipping
+
+Skip less important layers to save energy:
+
+```python
+# Allow aggressive layer skipping
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    constraints={
+        "layer_skip_max": 0.3,          # Up to 30%
+        "skip_strategy": "importance"   # Skip least important
+    }
+)
+
+print(f"Layers skipped: {result.adaptations['layers_skipped']}")
+```
+
+### Context Adaptation
+
+Reduce context window under constraints:
+
+```python
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    context=long_document,  # 32k tokens
+    constraints={
+        "context_max": 8192,           # Limit context
+        "context_strategy": "summarize" # Summarize overflow
+    }
+)
+```
+
+## Quality Modes
+
+### Best Effort
+
+Maximize quality within constraints, may degrade:
+
+```python
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    constraints={
+        "energy_budget_wh": 0.3,
+        "quality": "best_effort"
+    }
+)
+# Will adapt to fit energy budget
+```
+
+### Exact
+
+Fail if constraints can't be met at full quality:
+
+```python
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    constraints={
+        "energy_budget_wh": 0.3,
+        "quality": "exact"
+    }
+)
+# Will fail if 0.3 Wh isn't enough for full precision
+```
+
+### Bounded
+
+Degrade only within specified bounds:
+
+```python
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    constraints={
+        "energy_budget_wh": 0.3,
+        "quality": "bounded",
+        "quality_floor": 0.95  # Must maintain 95% quality
+    }
+)
+# Will adapt but not below 95% quality
+```
+
+## Monitoring
+
+Track adaptation patterns over time:
+
+```python
+# Get adaptation statistics
+stats = client.runtime.adaptation_stats(
+    period="24h"
+)
+
+print(f"Total requests: {stats.total_requests}")
+print(f"Adapted requests: {stats.adapted_requests}")
+print(f"Average energy savings: {stats.avg_energy_savings_percent}%")
+print(f"Average quality maintained: {stats.avg_quality_maintained}")
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Resilient Compute" icon="shield" href="/runtime/resilient">
+    Learn about fault tolerance
+  </Card>
+  <Card title="Orbit Scheduler" icon="calendar" href="/runtime/scheduler">
+    Learn about workload placement
+  </Card>
+</CardGroup>

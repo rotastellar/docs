@@ -1,0 +1,116 @@
+---
+title: Quickstart
+description: "Get up and running in 5 minutes"
+---
+
+# Quickstart
+
+This guide will get you from zero to your first API call in under 5 minutes.
+
+## 1. Get an API Key
+
+<Card title="Request Early Access" icon="rocket" href="https://rotastellar.com/early-access/">
+  Sign up to receive your API credentials.
+</Card>
+
+## 2. Install the SDK
+
+<CodeGroup>
+```bash Python
+pip install rotastellar
+```
+
+```bash Node.js
+npm install @rotastellar/sdk
+```
+
+```bash Rust
+cargo add rotastellar
+```
+</CodeGroup>
+
+## 3. Make Your First Request
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_your_api_key")
+
+# Get ISS position
+iss = client.intelligence.satellite("ISS")
+pos = iss.position()
+
+print(f"ISS Location: {pos.lat}, {pos.lon}")
+print(f"Altitude: {pos.altitude_km} km")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_your_api_key' });
+
+// Get ISS position
+const iss = await client.intelligence.satellite('ISS');
+const pos = await iss.position();
+
+console.log(`ISS Location: ${pos.lat}, ${pos.lon}`);
+console.log(`Altitude: ${pos.altitudeKm} km`);
+```
+
+```rust Rust
+use rotastellar::RotaStellar;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_your_api_key")?;
+
+    // Get ISS position
+    let iss = client.intelligence().satellite("ISS").await?;
+    let pos = iss.position().await?;
+
+    println!("ISS Location: {}, {}", pos.lat, pos.lon);
+    println!("Altitude: {} km", pos.altitude_km);
+
+    Ok(())
+}
+```
+
+```bash cURL
+curl https://api.rotastellar.com/v1/satellites/ISS \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+</CodeGroup>
+
+## 4. Explore the API
+
+Now that you're set up, explore what you can build:
+
+<CardGroup cols={2}>
+  <Card title="Track Satellites" icon="satellite-dish" href="/intelligence/satellites">
+    Real-time positions for 10,000+ active satellites
+  </Card>
+  <Card title="Analyze Conjunctions" icon="triangle-exclamation" href="/intelligence/conjunctions">
+    Collision probability and avoidance recommendations
+  </Card>
+  <Card title="Plan Orbital Compute" icon="calculator" href="/planning/feasibility">
+    Feasibility analysis for space-based workloads
+  </Card>
+  <Card title="Simulate Thermals" icon="temperature-high" href="/planning/thermal">
+    Heat rejection modeling for orbital hardware
+  </Card>
+</CardGroup>
+
+## Rate Limits
+
+| Tier | Requests/minute | Requests/day |
+|------|-----------------|--------------|
+| Free | 10 | 1,000 |
+| Pro | 100 | 100,000 |
+| Enterprise | Custom | Custom |
+
+## Need Help?
+
+- [API Reference](/api-reference) — Full endpoint documentation
+- [GitHub Issues](https://github.com/rotastellar/rotastellar-python/issues) — Bug reports and feature requests
+- [Contact Us](https://rotastellar.com/contact/) — Enterprise support

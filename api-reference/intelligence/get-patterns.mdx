@@ -1,0 +1,103 @@
+---
+title: Get Patterns
+api: GET /v1/patterns
+description: "Detect anomalies and maneuvers in satellite behavior"
+---
+
+## Request
+
+<ParamField query="satellite" type="string" required>
+  Satellite ID or name
+</ParamField>
+
+<ParamField query="lookback_days" type="integer" default="30">
+  Analysis window (1-365 days)
+</ParamField>
+
+<ParamField query="type" type="string">
+  Filter by pattern type: `maneuver`, `anomaly`, `proximity`, `operational`
+</ParamField>
+
+<ParamField query="min_confidence" type="number" default="0.7">
+  Minimum confidence threshold (0-1)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://api.rotastellar.com/v1/patterns?satellite=COSMOS-2542&lookback_days=30" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+patterns = client.intelligence.patterns(
+    satellite="COSMOS-2542",
+    lookback_days=30
+)
+
+for pattern in patterns:
+    print(f"{pattern.type}: {pattern.description}")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const patterns = await client.intelligence.patterns({
+  satellite: 'COSMOS-2542',
+  lookbackDays: 30
+});
+
+for (const pattern of patterns) {
+  console.log(`${pattern.type}: ${pattern.description}`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "satellite": {
+    "id": "44832",
+    "name": "COSMOS-2542"
+  },
+  "patterns": [
+    {
+      "id": "pat_xyz789",
+      "type": "maneuver",
+      "subtype": "orbit_raise",
+      "timestamp": "2026-01-15T08:23:00Z",
+      "confidence": 0.95,
+      "description": "Orbit raising maneuver detected, altitude increased by 12km",
+      "details": {
+        "delta_altitude_km": 12.3,
+        "delta_v_estimated_m_s": 2.1,
+        "pre_altitude_km": 538,
+        "post_altitude_km": 550.3
+      }
+    },
+    {
+      "id": "pat_abc456",
+      "type": "proximity",
+      "subtype": "approach",
+      "timestamp": "2026-01-10T14:45:00Z",
+      "confidence": 0.88,
+      "description": "Approached USA-245 within 50km, maintained position for 6 hours",
+      "details": {
+        "target": "USA-245",
+        "min_distance_km": 48.2,
+        "duration_hours": 6.2
+      }
+    }
+  ],
+  "analysis_window": {
+    "start": "2025-12-22T00:00:00Z",
+    "end": "2026-01-21T00:00:00Z"
+  }
+}
+```
+</ResponseExample>

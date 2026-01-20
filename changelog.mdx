@@ -1,0 +1,52 @@
+---
+title: Changelog
+description: "API version history and updates"
+---
+
+# Changelog
+
+All notable changes to the RotaStellar API.
+
+## 2026-01-21 — Early Access Launch
+
+<Note>
+  Initial early access release of the RotaStellar API.
+</Note>
+
+### Available
+
+- **Planning Tools API** — Feasibility analysis, thermal modeling, latency simulation, power budgeting
+- **Orbital Intelligence API** — Satellite tracking, conjunction analysis, pattern detection
+- **Python SDK** — `pip install rotastellar`
+- **Node.js SDK** — `npm install @rotastellar/sdk`
+- **Rust SDK** — `cargo add rotastellar`
+
+### Coming Soon
+
+- **Orbital Runtime API** — Scheduled for Q2 2026
+- **Webhook notifications** — Q1 2026
+- **Bulk data export** — Q1 2026
+
+---
+
+## Versioning
+
+The API uses date-based versioning in the URL path:
+
+```
+https://api.rotastellar.com/v1/...
+```
+
+Breaking changes will be released as new versions with migration guides.
+
+## Deprecation Policy
+
+- Deprecated features are announced 6 months before removal
+- Deprecated endpoints return `X-Deprecated: true` header
+- Migration guides are provided for all breaking changes
+
+## Subscribe to Updates
+
+<Card title="Developer Newsletter" icon="envelope" href="https://rotastellar.com/newsletter/">
+  Get notified about API changes and new features.
+</Card>

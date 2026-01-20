@@ -1,0 +1,318 @@
+---
+title: Resilient Compute
+description: "Fault-tolerant ML for radiation environments"
+---
+
+# Resilient Compute
+
+<Warning>
+  **Coming Q2 2026** — This is a design preview.
+  [Request early access](https://rotastellar.com/early-access/) to be notified when available.
+</Warning>
+
+## Overview
+
+Resilient Compute provides fault-tolerant ML execution for radiation environments. Space radiation causes Single Event Upsets (SEUs) that flip bits in memory and computation. Instead of ignoring this reality, we build detection and recovery directly into the inference pipeline.
+
+## The Problem
+
+In LEO, a typical compute system experiences:
+
+- **~10-100 SEUs per day** in unshielded memory
+- **Silent data corruption** in weights and activations
+- **Accumulated errors** that compound through layers
+- **Unpredictable failures** in traditional ML pipelines
+
+## Our Approach
+
+```
+┌─────────────────────────────────────────────────────┐
+│              Resilient Compute Pipeline              │
+│                                                     │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐       │
+│  │  Input   │──▶│  Layer   │──▶│  Output  │       │
+│  │ Checksums│   │ Execution│   │ Validation│       │
+│  └──────────┘   └────┬─────┘   └──────────┘       │
+│                      │                             │
+│                      ▼                             │
+│              ┌──────────────┐                      │
+│              │   Error      │                      │
+│              │   Detection  │                      │
+│              └──────┬───────┘                      │
+│                     │                              │
+│         ┌──────────┴──────────┐                   │
+│         ▼                     ▼                   │
+│  ┌──────────────┐    ┌──────────────┐            │
+│  │   Bounded    │    │  Selective   │            │
+│  │   Error Prop │    │  Re-execute  │            │
+│  └──────────────┘    └──────────────┘            │
+└─────────────────────────────────────────────────────┘
+```
+
+## Key Capabilities
+
+- **Error detection** — Checksums and redundancy catch corruption
+- **Bounded propagation** — Prevent errors from cascading
+- **Selective re-execution** — Only re-run affected computation
+- **Graceful degradation** — Maintain service despite faults
+- **Transparency** — Report what happened and confidence level
+
+## API Preview
+
+### Enable Resilience Features
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="Critical analysis of...",
+    resilience={
+        "checksum_layers": True,        # Verify layer outputs
+        "redundant_attention": True,    # Duplicate attention computation
+        "max_reexecute": 3,             # Max re-executions per layer
+        "error_threshold": 0.01         # Max acceptable error rate
+    }
+)
+
+print(f"Response: {result.text}")
+print(f"Errors detected: {result.resilience.errors_detected}")
+print(f"Errors corrected: {result.resilience.errors_corrected}")
+print(f"Confidence: {result.resilience.confidence}")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const result = await client.runtime.generate({
+  model: 'llama-70b',
+  prompt: 'Critical analysis of...',
+  resilience: {
+    checksumLayers: true,
+    redundantAttention: true,
+    maxReexecute: 3,
+    errorThreshold: 0.01
+  }
+});
+
+console.log(`Confidence: ${result.resilience.confidence}`);
+```
+
+```bash cURL
+curl -X POST https://api.rotastellar.com/v1/runtime/generate \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama-70b",
+    "prompt": "Critical analysis of...",
+    "resilience": {
+      "checksum_layers": true,
+      "redundant_attention": true,
+      "max_reexecute": 3,
+      "error_threshold": 0.01
+    }
+  }'
+```
+</CodeGroup>
+
+### Resilience Report
+
+Every response includes a resilience report:
+
+```json
+{
+  "text": "The analysis shows...",
+  "resilience": {
+    "errors_detected": 2,
+    "errors_corrected": 2,
+    "reexecutions": 1,
+    "confidence": 0.998,
+    "layers_validated": 80,
+    "checksum_failures": 0,
+    "details": [
+      {
+        "layer": 42,
+        "type": "activation_corruption",
+        "action": "reexecuted",
+        "resolved": true
+      },
+      {
+        "layer": 67,
+        "type": "weight_bitflip",
+        "action": "corrected_ecc",
+        "resolved": true
+      }
+    ]
+  }
+}
+```
+
+### Configure Resilience Globally
+
+```python
+client.runtime.configure(
+    resilience={
+        # Detection methods
+        "checksum_layers": True,           # Checksum layer outputs
+        "redundant_attention": True,       # Duplicate attention
+        "weight_verification": "periodic", # or "continuous", "none"
+
+        # Recovery behavior
+        "max_reexecute": 3,               # Max retries per layer
+        "reexecute_strategy": "selective", # or "full_layer"
+        "fallback_precision": "fp32",      # Higher precision for re-exec
+
+        # Error bounds
+        "error_threshold": 0.01,           # Max error rate before fail
+        "confidence_floor": 0.95           # Min acceptable confidence
+    }
+)
+```
+
+## Detection Methods
+
+### Layer Checksums
+
+Verify outputs match expected ranges:
+
+```python
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    resilience={
+        "checksum_layers": True,
+        "checksum_granularity": "per_head"  # or "per_layer"
+    }
+)
+```
+
+### Redundant Computation
+
+Run critical computations twice:
+
+```python
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    resilience={
+        "redundant_attention": True,  # Duplicate attention
+        "redundant_ffn": False        # Don't duplicate FFN (too expensive)
+    }
+)
+```
+
+### ECC Memory
+
+Use error-correcting memory when available:
+
+```python
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    resilience={
+        "require_ecc": True  # Fail if ECC not available
+    }
+)
+```
+
+## Recovery Strategies
+
+### Selective Re-execution
+
+Only re-run affected computation:
+
+```python
+# If layer 42 has a checksum failure, only re-run layer 42
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    resilience={
+        "reexecute_strategy": "selective",
+        "max_reexecute": 3
+    }
+)
+```
+
+### Full Restart
+
+Re-run entire inference if errors exceed threshold:
+
+```python
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    resilience={
+        "reexecute_strategy": "full",
+        "error_threshold": 0.05  # Restart if >5% layers affected
+    }
+)
+```
+
+## Resilience Modes
+
+| Mode | Overhead | Protection | Use Case |
+|------|----------|------------|----------|
+| `minimal` | 5% | Basic detection | Low-criticality |
+| `standard` | 15% | Full detection + correction | Default |
+| `high` | 30% | Redundant execution | Safety-critical |
+| `paranoid` | 100% | Triple redundancy | Life-critical |
+
+```python
+result = client.runtime.generate(
+    model="llama-70b",
+    prompt="...",
+    resilience={"mode": "high"}
+)
+```
+
+## Monitoring Radiation Effects
+
+Track SEU rates and their impact:
+
+```python
+# Get radiation statistics
+stats = client.runtime.radiation_stats(
+    node="orbital-leo-1",
+    period="24h"
+)
+
+print(f"SEUs detected: {stats.seus_detected}")
+print(f"SEUs corrected: {stats.seus_corrected}")
+print(f"Inference impact: {stats.inference_impact_percent}%")
+print(f"Current flux: {stats.current_flux}")
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Balance overhead vs protection">
+    Use `standard` mode for most workloads. Reserve `high` and `paranoid`
+    for safety-critical applications.
+  </Accordion>
+
+  <Accordion title="Monitor confidence scores">
+    Track confidence over time. Degrading confidence may indicate
+    increasing radiation or hardware issues.
+  </Accordion>
+
+  <Accordion title="Plan for worst case">
+    During solar events, radiation spikes. Consider pausing
+    non-critical workloads during high-flux periods.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Adaptive Runtime" icon="gauge" href="/runtime/adaptive">
+    Learn about energy-aware inference
+  </Card>
+  <Card title="Orbit Scheduler" icon="calendar" href="/runtime/scheduler">
+    Learn about workload placement
+  </Card>
+</CardGroup>

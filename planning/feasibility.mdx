@@ -1,0 +1,237 @@
+---
+title: Feasibility Analysis
+description: "Evaluate orbital compute viability for your workload"
+---
+
+# Feasibility Analysis
+
+Determine whether your workload is suitable for orbital deployment and get recommendations for optimal configuration.
+
+<Info>
+  **Status:** Early Access — [Request API key](https://rotastellar.com/early-access/)
+</Info>
+
+## Overview
+
+Feasibility analysis evaluates:
+
+- **Technical viability** — Can this workload run in space?
+- **Optimal orbit** — Which orbital regime best fits your requirements?
+- **Cost estimation** — What will deployment and operation cost?
+- **Risk assessment** — What are the key challenges?
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+result = client.planning.analyze(
+    workload="ai_inference",
+    compute_tflops=100,
+    storage_tb=10,
+    bandwidth_gbps=1,
+    latency_sla_ms=50
+)
+
+print(f"Viable: {result.viable}")
+print(f"Recommendation: {result.recommendation}")
+print(f"Orbit: {result.orbit}")
+print(f"Cost: ${result.cost_monthly}/mo")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const result = await client.planning.analyze({
+  workload: 'ai_inference',
+  computeTflops: 100,
+  storageTb: 10,
+  bandwidthGbps: 1,
+  latencySlams: 50
+});
+
+console.log(`Viable: ${result.viable}`);
+console.log(`Orbit: ${result.orbit}`);
+```
+
+```rust Rust
+use rotastellar::RotaStellar;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_...")?;
+
+    let result = client.planning().analyze(AnalyzeRequest {
+        workload: "ai_inference".to_string(),
+        compute_tflops: 100.0,
+        storage_tb: Some(10.0),
+        bandwidth_gbps: Some(1.0),
+        latency_sla_ms: Some(50),
+    }).await?;
+
+    println!("Viable: {}", result.viable);
+    println!("Orbit: {}", result.orbit);
+
+    Ok(())
+}
+```
+
+```bash cURL
+curl https://api.rotastellar.com/v1/planning/analyze \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workload": "ai_inference",
+    "compute_tflops": 100,
+    "storage_tb": 10,
+    "bandwidth_gbps": 1,
+    "latency_sla_ms": 50
+  }'
+```
+</CodeGroup>
+
+## Parameters
+
+### Required
+
+<ParamField body="workload" type="string" required>
+  Type of workload. Options:
+  - `ai_inference` — ML model inference
+  - `ai_training` — ML model training
+  - `data_processing` — General data processing
+  - `edge_compute` — Edge computing workloads
+  - `storage` — Data storage and retrieval
+</ParamField>
+
+<ParamField body="compute_tflops" type="number" required>
+  Required compute capacity in TFLOPS (FP16 equivalent)
+</ParamField>
+
+### Optional
+
+<ParamField body="storage_tb" type="number">
+  Required storage in terabytes
+</ParamField>
+
+<ParamField body="bandwidth_gbps" type="number">
+  Required bandwidth to/from ground in Gbps
+</ParamField>
+
+<ParamField body="latency_sla_ms" type="number">
+  Maximum acceptable latency in milliseconds
+</ParamField>
+
+<ParamField body="availability_sla" type="number">
+  Required availability (e.g., 0.999 for 99.9%)
+</ParamField>
+
+<ParamField body="region" type="string">
+  Geographic region for ground connectivity. Options: `global`, `north-america`, `europe`, `asia-pacific`
+</ParamField>
+
+## Response
+
+```json
+{
+  "viable": true,
+  "recommendation": "LEO constellation with 6 satellites provides optimal balance of latency and cost",
+  "orbit": {
+    "type": "LEO",
+    "altitude_km": 550,
+    "inclination_deg": 53,
+    "constellation_size": 6
+  },
+  "cost": {
+    "monthly": 125000,
+    "setup": 2500000,
+    "currency": "USD"
+  },
+  "power": {
+    "required_kw": 15.5,
+    "solar_array_m2": 45,
+    "battery_kwh": 120
+  },
+  "latency": {
+    "p50_ms": 25,
+    "p95_ms": 45,
+    "p99_ms": 65
+  },
+  "risks": [
+    {
+      "category": "thermal",
+      "severity": "medium",
+      "description": "Eclipse periods require thermal management"
+    }
+  ],
+  "alternatives": [
+    {
+      "orbit": "MEO",
+      "tradeoff": "Higher latency (80ms) but 40% lower cost"
+    }
+  ]
+}
+```
+
+## Workload Types
+
+### AI Inference
+
+Best for models that need low-latency inference close to data sources.
+
+```python
+result = client.planning.analyze(
+    workload="ai_inference",
+    compute_tflops=100,
+    latency_sla_ms=50
+)
+```
+
+### AI Training
+
+For training models on orbital data (e.g., Earth observation).
+
+```python
+result = client.planning.analyze(
+    workload="ai_training",
+    compute_tflops=500,
+    storage_tb=100
+)
+```
+
+### Data Processing
+
+General-purpose compute for data transformation and analysis.
+
+```python
+result = client.planning.analyze(
+    workload="data_processing",
+    compute_tflops=50,
+    bandwidth_gbps=10
+)
+```
+
+## Cost Factors
+
+| Factor | Impact |
+|--------|--------|
+| Orbit altitude | Higher = cheaper launch, more latency |
+| Constellation size | More satellites = better coverage, higher cost |
+| Power requirements | Higher power = larger solar arrays |
+| Bandwidth | More bandwidth = more ground stations |
+| Redundancy | Higher availability = more satellites |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Thermal Simulation" icon="temperature-high" href="/planning/thermal">
+    Model heat management for your configuration
+  </Card>
+  <Card title="Latency Simulation" icon="clock" href="/planning/latency">
+    Detailed latency modeling for your use case
+  </Card>
+</CardGroup>

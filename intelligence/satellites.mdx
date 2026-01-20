@@ -1,0 +1,302 @@
+---
+title: Satellite Tracking
+description: "Real-time positions for 10,000+ active satellites"
+---
+
+# Satellite Tracking
+
+Track any satellite in Earth orbit with real-time position data, orbital parameters, and historical trajectories.
+
+<Info>
+  **Status:** Early Access — [Request API key](https://rotastellar.com/early-access/)
+</Info>
+
+## Overview
+
+The Satellite Tracking API provides:
+
+- **Real-time positions** — Current lat/lon/altitude for any tracked object
+- **Orbital parameters** — Keplerian elements, period, inclination
+- **Propagation** — Future position predictions
+- **Historical data** — Past trajectory archive
+
+## Catalog Coverage
+
+| Category | Count | Sources |
+|----------|-------|---------|
+| Active satellites | 10,000+ | Space-Track, commercial |
+| Debris objects | 35,000+ | Space-Track |
+| Total tracked | 45,000+ | Multiple sources |
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+# Get satellite by name or NORAD ID
+iss = client.intelligence.satellite("ISS")  # or "25544"
+
+# Current position
+pos = iss.position()
+print(f"Location: {pos.lat}, {pos.lon}")
+print(f"Altitude: {pos.altitude_km} km")
+print(f"Velocity: {pos.velocity_km_s} km/s")
+
+# Orbital parameters
+orbit = iss.orbit()
+print(f"Period: {orbit.period_min} minutes")
+print(f"Inclination: {orbit.inclination_deg} deg")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+// Get satellite
+const iss = await client.intelligence.satellite('ISS');
+
+// Current position
+const pos = await iss.position();
+console.log(`Location: ${pos.lat}, ${pos.lon}`);
+console.log(`Altitude: ${pos.altitudeKm} km`);
+
+// Orbital parameters
+const orbit = await iss.orbit();
+console.log(`Period: ${orbit.periodMin} minutes`);
+```
+
+```rust Rust
+use rotastellar::RotaStellar;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_...")?;
+
+    let iss = client.intelligence().satellite("ISS").await?;
+    let pos = iss.position().await?;
+
+    println!("Location: {}, {}", pos.lat, pos.lon);
+    println!("Altitude: {} km", pos.altitude_km);
+
+    Ok(())
+}
+```
+
+```bash cURL
+curl https://api.rotastellar.com/v1/satellites/ISS \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+</CodeGroup>
+
+## Get Satellite
+
+Retrieve information about a specific satellite.
+
+```
+GET /v1/satellites/{satellite_id}
+```
+
+<ParamField path="satellite_id" type="string" required>
+  NORAD catalog ID or common name (e.g., "25544" or "ISS")
+</ParamField>
+
+### Response
+
+```json
+{
+  "id": "25544",
+  "name": "ISS (ZARYA)",
+  "names": ["ISS", "ZARYA", "INTERNATIONAL SPACE STATION"],
+  "type": "PAYLOAD",
+  "operator": "NASA/Roscosmos",
+  "launch_date": "1998-11-20",
+  "position": {
+    "lat": 41.264,
+    "lon": -95.123,
+    "altitude_km": 420.5,
+    "velocity_km_s": 7.66,
+    "timestamp": "2026-01-21T12:00:00Z"
+  },
+  "orbit": {
+    "period_min": 92.9,
+    "inclination_deg": 51.64,
+    "apogee_km": 422,
+    "perigee_km": 418,
+    "eccentricity": 0.0002
+  }
+}
+```
+
+## List Satellites
+
+Query the satellite catalog with filters.
+
+```
+GET /v1/satellites
+```
+
+<ParamField query="type" type="string">
+  Filter by object type: `PAYLOAD`, `ROCKET_BODY`, `DEBRIS`
+</ParamField>
+
+<ParamField query="operator" type="string">
+  Filter by operator (e.g., "SpaceX", "OneWeb")
+</ParamField>
+
+<ParamField query="constellation" type="string">
+  Filter by constellation (e.g., "Starlink", "OneWeb")
+</ParamField>
+
+<ParamField query="limit" type="integer" default="100">
+  Maximum results (1-1000)
+</ParamField>
+
+<ParamField query="cursor" type="string">
+  Pagination cursor for next page
+</ParamField>
+
+### Example: List Starlink Satellites
+
+<CodeGroup>
+```python Python
+starlinks = client.intelligence.satellites(
+    constellation="Starlink",
+    limit=100
+)
+
+for sat in starlinks:
+    pos = sat.position()
+    print(f"{sat.name}: {pos.altitude_km} km")
+```
+
+```bash cURL
+curl "https://api.rotastellar.com/v1/satellites?constellation=Starlink&limit=100" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+</CodeGroup>
+
+## Get Position
+
+Get current or predicted position.
+
+```
+GET /v1/satellites/{satellite_id}/position
+```
+
+<ParamField query="at" type="string">
+  ISO 8601 timestamp for prediction (default: now)
+</ParamField>
+
+### Example: Predict Future Position
+
+<CodeGroup>
+```python Python
+from datetime import datetime, timedelta
+
+# Where will ISS be in 2 hours?
+future = datetime.utcnow() + timedelta(hours=2)
+
+pos = iss.position(at=future)
+print(f"Predicted: {pos.lat}, {pos.lon}")
+```
+
+```bash cURL
+curl "https://api.rotastellar.com/v1/satellites/ISS/position?at=2026-01-21T14:00:00Z" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+</CodeGroup>
+
+## Get Trajectory
+
+Get position history or predictions over a time range.
+
+```
+GET /v1/satellites/{satellite_id}/trajectory
+```
+
+<ParamField query="start" type="string" required>
+  Start time (ISO 8601)
+</ParamField>
+
+<ParamField query="end" type="string" required>
+  End time (ISO 8601)
+</ParamField>
+
+<ParamField query="interval_sec" type="integer" default="60">
+  Time between points in seconds
+</ParamField>
+
+### Example: Get 24-hour Trajectory
+
+<CodeGroup>
+```python Python
+from datetime import datetime, timedelta
+
+trajectory = iss.trajectory(
+    start=datetime.utcnow(),
+    end=datetime.utcnow() + timedelta(hours=24),
+    interval_sec=300  # Every 5 minutes
+)
+
+for point in trajectory.points:
+    print(f"{point.timestamp}: {point.lat}, {point.lon}")
+```
+
+```bash cURL
+curl "https://api.rotastellar.com/v1/satellites/ISS/trajectory?start=2026-01-21T00:00:00Z&end=2026-01-22T00:00:00Z&interval_sec=300" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+</CodeGroup>
+
+## Data Formats
+
+### Position Object
+
+```json
+{
+  "lat": 41.264,
+  "lon": -95.123,
+  "altitude_km": 420.5,
+  "velocity_km_s": 7.66,
+  "timestamp": "2026-01-21T12:00:00Z"
+}
+```
+
+### Orbit Object
+
+```json
+{
+  "epoch": "2026-01-21T00:00:00Z",
+  "period_min": 92.9,
+  "inclination_deg": 51.64,
+  "raan_deg": 123.45,
+  "arg_perigee_deg": 234.56,
+  "eccentricity": 0.0002,
+  "mean_anomaly_deg": 45.67,
+  "apogee_km": 422,
+  "perigee_km": 418
+}
+```
+
+## Rate Limits
+
+| Endpoint | Free | Pro | Enterprise |
+|----------|------|-----|------------|
+| Get Satellite | 10/min | 100/min | Custom |
+| List Satellites | 5/min | 50/min | Custom |
+| Get Trajectory | 2/min | 20/min | Custom |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Conjunction Analysis" icon="triangle-exclamation" href="/intelligence/conjunctions">
+    Analyze collision risks between objects
+  </Card>
+  <Card title="Pattern Detection" icon="chart-line" href="/intelligence/patterns">
+    Detect anomalies in satellite behavior
+  </Card>
+</CardGroup>

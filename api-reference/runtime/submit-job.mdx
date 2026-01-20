@@ -1,0 +1,108 @@
+---
+title: Submit Job
+api: POST /v1/runtime/jobs
+description: "Submit an inference job to the Orbital Runtime"
+---
+
+<Warning>
+  **Coming Q2 2026** — This endpoint is a design preview.
+</Warning>
+
+## Request
+
+<ParamField body="model" type="string" required>
+  Model identifier (e.g., "llama-70b")
+</ParamField>
+
+<ParamField body="prompt" type="string" required>
+  Input prompt for inference
+</ParamField>
+
+<ParamField body="constraints" type="object">
+  Execution constraints:
+  - `latency_sla_ms` — Maximum acceptable latency
+  - `energy_budget_wh` — Maximum energy for this request
+  - `quality` — `exact`, `best_effort`, or `bounded`
+</ParamField>
+
+<ParamField body="placement" type="object">
+  Placement preferences:
+  - `prefer` — `orbital` or `earth`
+  - `fallback` — Fallback location
+  - `region_affinity` — Preferred region
+</ParamField>
+
+<ParamField body="resilience" type="object">
+  Fault tolerance settings:
+  - `checksum_layers` — Verify layer outputs
+  - `redundant_attention` — Duplicate attention computation
+  - `max_reexecute` — Max re-executions per layer
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.rotastellar.com/v1/runtime/jobs \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama-70b",
+    "prompt": "Analyze this satellite telemetry...",
+    "constraints": {
+      "latency_sla_ms": 200,
+      "energy_budget_wh": 0.5,
+      "quality": "best_effort"
+    }
+  }'
+```
+
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+job = client.runtime.submit(
+    model="llama-70b",
+    prompt="Analyze this satellite telemetry...",
+    constraints={
+        "latency_sla_ms": 200,
+        "energy_budget_wh": 0.5,
+        "quality": "best_effort"
+    }
+)
+
+result = job.result(timeout=30)
+print(result.text)
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const job = await client.runtime.submit({
+  model: 'llama-70b',
+  prompt: 'Analyze this satellite telemetry...',
+  constraints: {
+    latencySlams: 200,
+    energyBudgetWh: 0.5,
+    quality: 'best_effort'
+  }
+});
+
+const result = await job.result({ timeout: 30000 });
+console.log(result.text);
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "job_xyz789",
+  "status": "pending",
+  "node": "orbital-leo-1",
+  "placement_reason": "Optimal latency to europe region",
+  "eta_ms": 1500,
+  "created_at": "2026-01-21T12:00:00Z"
+}
+```
+</ResponseExample>

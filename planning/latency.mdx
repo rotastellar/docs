@@ -1,0 +1,223 @@
+---
+title: Latency Simulation
+description: "Predict network latency based on orbital geometry"
+---
+
+# Latency Simulation
+
+Model end-to-end latency for orbital compute deployments, including propagation delay, ground station handovers, and inter-satellite links.
+
+<Info>
+  **Status:** Early Access — [Request API key](https://rotastellar.com/early-access/)
+</Info>
+
+## Overview
+
+Latency in orbital systems depends on:
+
+- **Propagation delay** — Speed of light distance
+- **Ground station availability** — Coverage and handover
+- **Inter-satellite links (ISL)** — Routing through constellation
+- **Processing delay** — On-board and ground processing
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+latency = client.planning.latency(
+    orbit="LEO-550",
+    ground_stations=["us-west", "us-east", "europe", "asia"],
+    include_isl=True
+)
+
+print(f"P50 latency: {latency.p50_ms}ms")
+print(f"P95 latency: {latency.p95_ms}ms")
+print(f"P99 latency: {latency.p99_ms}ms")
+print(f"Coverage: {latency.coverage_percent}%")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const latency = await client.planning.latency({
+  orbit: 'LEO-550',
+  groundStations: ['us-west', 'us-east', 'europe', 'asia'],
+  includeIsl: true
+});
+
+console.log(`P50: ${latency.p50Ms}ms`);
+console.log(`P99: ${latency.p99Ms}ms`);
+```
+
+```bash cURL
+curl https://api.rotastellar.com/v1/planning/latency \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orbit": "LEO-550",
+    "ground_stations": ["us-west", "us-east", "europe", "asia"],
+    "include_isl": true
+  }'
+```
+</CodeGroup>
+
+## Parameters
+
+<ParamField body="orbit" type="string" required>
+  Orbit specification (e.g., `LEO-550`, `MEO-8000`, `GEO`)
+</ParamField>
+
+<ParamField body="ground_stations" type="array" required>
+  List of ground station regions:
+  - `us-west`, `us-east`, `us-central`
+  - `europe`, `europe-north`
+  - `asia`, `asia-south`
+  - `australia`
+  - `south-america`
+</ParamField>
+
+<ParamField body="include_isl" type="boolean" default="false">
+  Include inter-satellite link routing
+</ParamField>
+
+<ParamField body="constellation_size" type="number">
+  Number of satellites (affects ISL routing options)
+</ParamField>
+
+<ParamField body="user_location" type="object">
+  Specific user location for point-to-point latency:
+  ```json
+  {"lat": 37.7749, "lon": -122.4194}
+  ```
+</ParamField>
+
+## Response
+
+```json
+{
+  "p50_ms": 25,
+  "p95_ms": 48,
+  "p99_ms": 72,
+  "min_ms": 12,
+  "max_ms": 145,
+  "coverage_percent": 98.5,
+  "breakdown": {
+    "propagation_ms": 8,
+    "processing_ms": 5,
+    "handover_ms": 12,
+    "isl_hops_avg": 1.3
+  },
+  "ground_station_stats": [
+    {
+      "station": "us-west",
+      "contact_percent": 35,
+      "avg_elevation_deg": 42
+    },
+    {
+      "station": "europe",
+      "contact_percent": 28,
+      "avg_elevation_deg": 38
+    }
+  ],
+  "gaps": [
+    {
+      "start_min": 23,
+      "duration_min": 4,
+      "region": "pacific"
+    }
+  ]
+}
+```
+
+## Latency by Orbit Type
+
+| Orbit | Altitude | One-way Propagation | RTT (typical) |
+|-------|----------|---------------------|---------------|
+| LEO | 550 km | 1.8 ms | 20-50 ms |
+| MEO | 8,000 km | 27 ms | 80-150 ms |
+| GEO | 35,786 km | 120 ms | 480-600 ms |
+
+## Latency Optimization
+
+### With Inter-Satellite Links
+
+ISLs can reduce latency by routing traffic through space instead of bouncing to ground:
+
+```python
+# Without ISL - must wait for ground station contact
+latency_no_isl = client.planning.latency(
+    orbit="LEO-550",
+    ground_stations=["us-west"],
+    include_isl=False
+)
+
+# With ISL - can route through constellation
+latency_with_isl = client.planning.latency(
+    orbit="LEO-550",
+    ground_stations=["us-west"],
+    include_isl=True,
+    constellation_size=100
+)
+
+print(f"Without ISL: P99 = {latency_no_isl.p99_ms}ms")
+print(f"With ISL: P99 = {latency_with_isl.p99_ms}ms")
+```
+
+### Geographic Coverage Analysis
+
+Analyze latency from specific user locations:
+
+```python
+# Latency from San Francisco to orbital compute
+latency = client.planning.latency(
+    orbit="LEO-550",
+    ground_stations=["us-west", "us-east"],
+    user_location={"lat": 37.7749, "lon": -122.4194}
+)
+
+print(f"SF to orbit P50: {latency.p50_ms}ms")
+```
+
+## Coverage Gaps
+
+LEO satellites don't provide continuous coverage. The API identifies gaps:
+
+```python
+latency = client.planning.latency(
+    orbit="LEO-550",
+    ground_stations=["us-west"]
+)
+
+for gap in latency.gaps:
+    print(f"Gap at {gap.start_min}min, duration {gap.duration_min}min")
+```
+
+To eliminate gaps, add more ground stations or enable ISL:
+
+```python
+# Add more ground stations
+latency = client.planning.latency(
+    orbit="LEO-550",
+    ground_stations=["us-west", "us-east", "europe", "asia"],
+    include_isl=True
+)
+
+print(f"Coverage: {latency.coverage_percent}%")  # ~99%+
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Power Budgeting" icon="bolt" href="/planning/power">
+    Plan power for your orbital deployment
+  </Card>
+  <Card title="Feasibility Analysis" icon="calculator" href="/planning/feasibility">
+    Complete feasibility assessment
+  </Card>
+</CardGroup>

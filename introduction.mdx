@@ -1,0 +1,121 @@
+---
+title: Introduction
+description: "The API for computing beyond Earth"
+---
+
+# RotaStellar API
+
+The RotaStellar API provides programmatic access to orbital compute infrastructure — from planning tools to runtime execution.
+
+<Info>
+  **Early Access** — The API is currently in early access.
+  [Request an API key](https://rotastellar.com/early-access/) to get started.
+</Info>
+
+## Platform Overview
+
+The API is organized around three product layers:
+
+<CardGroup cols={3}>
+  <Card title="Planning Tools" icon="calculator" href="/planning/overview">
+    Feasibility analysis, thermal modeling, latency simulation
+  </Card>
+  <Card title="Orbital Intelligence" icon="satellite" href="/intelligence/overview">
+    Satellite tracking, conjunction analysis, pattern detection
+  </Card>
+  <Card title="Orbital Runtime" icon="microchip" href="/runtime/overview">
+    Orbit-aware scheduling, adaptive inference, resilient compute
+  </Card>
+</CardGroup>
+
+## API Status
+
+| Product | Status | Availability |
+|---------|--------|--------------|
+| Planning Tools | Early Access | Now |
+| Orbital Intelligence | Early Access | Now |
+| Orbital Runtime | Design Preview | Q2 2026 |
+
+## Quick Example
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+# Check feasibility of orbital compute
+result = client.planning.analyze(
+    workload="ai_inference",
+    compute_tflops=100
+)
+
+print(f"Recommended orbit: {result.orbit}")
+print(f"Estimated cost: ${result.cost_monthly}/mo")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+// Check feasibility of orbital compute
+const result = await client.planning.analyze({
+  workload: 'ai_inference',
+  computeTflops: 100
+});
+
+console.log(`Recommended orbit: ${result.orbit}`);
+console.log(`Estimated cost: $${result.costMonthly}/mo`);
+```
+
+```rust Rust
+use rotastellar::RotaStellar;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_...")?;
+
+    let result = client.planning().analyze(
+        "ai_inference",
+        100.0  // compute_tflops
+    ).await?;
+
+    println!("Recommended orbit: {}", result.orbit);
+    println!("Estimated cost: ${}/mo", result.cost_monthly);
+
+    Ok(())
+}
+```
+
+```bash cURL
+curl https://api.rotastellar.com/v1/planning/analyze \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workload": "ai_inference",
+    "compute_tflops": 100
+  }'
+```
+</CodeGroup>
+
+## Base URL
+
+All API requests should be made to:
+
+```
+https://api.rotastellar.com/v1
+```
+
+## Authentication
+
+The API uses Bearer token authentication. Include your API key in the `Authorization` header:
+
+```bash
+curl https://api.rotastellar.com/v1/satellites \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+<Card title="Get your API key" icon="key" href="https://rotastellar.com/early-access/">
+  Request early access to receive your API credentials.
+</Card>

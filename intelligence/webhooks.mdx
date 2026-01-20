@@ -1,0 +1,300 @@
+---
+title: Webhooks
+description: "Real-time alerts for orbital events"
+---
+
+# Webhooks
+
+Receive real-time notifications when orbital events occur, including conjunctions, anomalies, and pattern detections.
+
+<Info>
+  **Status:** Coming Q1 2026 — [Request early access](https://rotastellar.com/early-access/) to be notified when available.
+</Info>
+
+## Overview
+
+Webhooks deliver events to your application in real-time:
+
+- **Conjunction alerts** — New conjunctions or risk level changes
+- **Pattern detections** — Maneuvers, anomalies, proximity events
+- **Satellite updates** — Status changes, new TLE data
+- **System events** — API maintenance, data source updates
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+# Create a webhook endpoint
+webhook = client.webhooks.create(
+    url="https://your-app.com/rotastellar-events",
+    events=["conjunction.created", "conjunction.risk_changed", "pattern.detected"],
+    secret="your-webhook-secret"
+)
+
+print(f"Webhook ID: {webhook.id}")
+print(f"Status: {webhook.status}")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const webhook = await client.webhooks.create({
+  url: 'https://your-app.com/rotastellar-events',
+  events: ['conjunction.created', 'conjunction.risk_changed', 'pattern.detected'],
+  secret: 'your-webhook-secret'
+});
+
+console.log(`Webhook ID: ${webhook.id}`);
+```
+
+```bash cURL
+curl -X POST https://api.rotastellar.com/v1/webhooks \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://your-app.com/rotastellar-events",
+    "events": ["conjunction.created", "conjunction.risk_changed", "pattern.detected"],
+    "secret": "your-webhook-secret"
+  }'
+```
+</CodeGroup>
+
+## Event Types
+
+### Conjunction Events
+
+| Event | Description |
+|-------|-------------|
+| `conjunction.created` | New conjunction detected |
+| `conjunction.updated` | Conjunction parameters updated |
+| `conjunction.risk_changed` | Risk level changed |
+| `conjunction.resolved` | Conjunction passed or maneuver executed |
+
+### Pattern Events
+
+| Event | Description |
+|-------|-------------|
+| `pattern.detected` | New pattern identified |
+| `pattern.maneuver` | Maneuver specifically detected |
+| `pattern.anomaly` | Anomaly specifically detected |
+| `pattern.proximity` | Proximity operation detected |
+
+### Satellite Events
+
+| Event | Description |
+|-------|-------------|
+| `satellite.tle_updated` | New orbital elements available |
+| `satellite.status_changed` | Operational status changed |
+| `satellite.decay_warning` | Reentry prediction issued |
+
+## Webhook Payload
+
+All webhook payloads follow this structure:
+
+```json
+{
+  "id": "evt_abc123",
+  "type": "conjunction.created",
+  "timestamp": "2026-01-21T12:00:00Z",
+  "data": {
+    "conjunction": {
+      "id": "conj_xyz789",
+      "tca": "2026-01-23T14:32:15Z",
+      "primary": {
+        "id": "12345",
+        "name": "STARLINK-1234"
+      },
+      "secondary": {
+        "id": "45678",
+        "name": "COSMOS 2251 DEB"
+      },
+      "miss_km": 0.45,
+      "probability": 2.3e-5,
+      "risk_level": "HIGH"
+    }
+  }
+}
+```
+
+## Verifying Webhooks
+
+Verify webhook signatures to ensure authenticity:
+
+<CodeGroup>
+```python Python
+import hmac
+import hashlib
+
+def verify_webhook(payload: bytes, signature: str, secret: str) -> bool:
+    expected = hmac.new(
+        secret.encode(),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(f"sha256={expected}", signature)
+
+# In your webhook handler
+@app.post("/rotastellar-events")
+def handle_webhook(request):
+    signature = request.headers.get("X-RotaStellar-Signature")
+    payload = request.body
+
+    if not verify_webhook(payload, signature, "your-webhook-secret"):
+        return {"error": "Invalid signature"}, 401
+
+    event = json.loads(payload)
+    print(f"Received event: {event['type']}")
+
+    return {"status": "ok"}
+```
+
+```typescript Node.js
+import crypto from 'crypto';
+
+function verifyWebhook(payload: string, signature: string, secret: string): boolean {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(`sha256=${expected}`),
+    Buffer.from(signature)
+  );
+}
+
+// In your webhook handler
+app.post('/rotastellar-events', (req, res) => {
+  const signature = req.headers['x-rotastellar-signature'];
+
+  if (!verifyWebhook(req.rawBody, signature, 'your-webhook-secret')) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  const event = req.body;
+  console.log(`Received event: ${event.type}`);
+
+  res.json({ status: 'ok' });
+});
+```
+</CodeGroup>
+
+## Managing Webhooks
+
+### List Webhooks
+
+```python
+webhooks = client.webhooks.list()
+
+for wh in webhooks:
+    print(f"{wh.id}: {wh.url}")
+    print(f"  Events: {', '.join(wh.events)}")
+    print(f"  Status: {wh.status}")
+```
+
+### Update Webhook
+
+```python
+webhook = client.webhooks.update(
+    id="wh_abc123",
+    events=["conjunction.created", "pattern.anomaly"],  # Change events
+    enabled=True
+)
+```
+
+### Delete Webhook
+
+```python
+client.webhooks.delete("wh_abc123")
+```
+
+### Test Webhook
+
+Send a test event to verify your endpoint:
+
+```python
+result = client.webhooks.test("wh_abc123")
+
+print(f"Test result: {result.status}")
+print(f"Response time: {result.response_time_ms}ms")
+```
+
+## Filtering Events
+
+Filter events to specific satellites:
+
+```python
+# Only receive events for specific satellites
+webhook = client.webhooks.create(
+    url="https://your-app.com/events",
+    events=["conjunction.created", "pattern.detected"],
+    filters={
+        "satellites": ["SAT-001", "SAT-002", "SAT-003"]
+    }
+)
+```
+
+Filter by risk level:
+
+```python
+# Only receive HIGH and CRITICAL conjunctions
+webhook = client.webhooks.create(
+    url="https://your-app.com/alerts",
+    events=["conjunction.created", "conjunction.risk_changed"],
+    filters={
+        "risk_levels": ["HIGH", "CRITICAL"]
+    }
+)
+```
+
+## Retry Policy
+
+Failed webhook deliveries are retried with exponential backoff:
+
+| Attempt | Delay |
+|---------|-------|
+| 1 | Immediate |
+| 2 | 1 minute |
+| 3 | 5 minutes |
+| 4 | 30 minutes |
+| 5 | 2 hours |
+| 6 | 8 hours |
+
+After 6 failed attempts, the webhook is disabled and you'll receive an email notification.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Respond quickly">
+    Return a 2xx response within 30 seconds. Process events asynchronously
+    if needed.
+  </Accordion>
+
+  <Accordion title="Handle duplicates">
+    Events may be delivered more than once. Use the event `id` to deduplicate.
+  </Accordion>
+
+  <Accordion title="Verify signatures">
+    Always verify the `X-RotaStellar-Signature` header to ensure authenticity.
+  </Accordion>
+
+  <Accordion title="Use HTTPS">
+    Webhook endpoints must use HTTPS for security.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Conjunction Analysis" icon="triangle-exclamation" href="/intelligence/conjunctions">
+    Learn about conjunction events
+  </Card>
+  <Card title="Pattern Detection" icon="chart-line" href="/intelligence/patterns">
+    Learn about pattern events
+  </Card>
+</CardGroup>

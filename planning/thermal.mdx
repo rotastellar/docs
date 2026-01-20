@@ -1,0 +1,200 @@
+---
+title: Thermal Simulation
+description: "Model heat rejection and thermal cycles in orbit"
+---
+
+# Thermal Simulation
+
+Simulate thermal behavior of compute hardware in orbital environments, including eclipse cycles and varying solar flux.
+
+<Info>
+  **Status:** Early Access — [Request API key](https://rotastellar.com/early-access/)
+</Info>
+
+## Overview
+
+Space presents unique thermal challenges:
+
+- **No convection** — Heat can only be rejected via radiation
+- **Eclipse cycles** — Periodic loss of solar heating
+- **Solar flux variation** — Changes with orbit and season
+- **Internal heat** — Compute generates significant waste heat
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+thermal = client.planning.thermal(
+    orbit="LEO-550",
+    power_dissipation_w=500,
+    radiator_area_m2=2.0,
+    internal_mass_kg=100
+)
+
+print(f"Steady state: {thermal.steady_state_c}C")
+print(f"Max (sunlit): {thermal.max_temp_c}C")
+print(f"Min (eclipse): {thermal.min_temp_c}C")
+print(f"Thermal margin: {thermal.margin_c}C")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const thermal = await client.planning.thermal({
+  orbit: 'LEO-550',
+  powerDissipationW: 500,
+  radiatorAreaM2: 2.0,
+  internalMassKg: 100
+});
+
+console.log(`Steady state: ${thermal.steadyStateC}C`);
+console.log(`Max temp: ${thermal.maxTempC}C`);
+```
+
+```bash cURL
+curl https://api.rotastellar.com/v1/planning/thermal \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orbit": "LEO-550",
+    "power_dissipation_w": 500,
+    "radiator_area_m2": 2.0,
+    "internal_mass_kg": 100
+  }'
+```
+</CodeGroup>
+
+## Parameters
+
+<ParamField body="orbit" type="string" required>
+  Orbit specification. Options:
+  - `LEO-400` to `LEO-600` — Low Earth Orbit at specified altitude
+  - `MEO-2000` to `MEO-20000` — Medium Earth Orbit
+  - `GEO` — Geostationary orbit
+  - Custom: `{"altitude_km": 550, "inclination_deg": 53}`
+</ParamField>
+
+<ParamField body="power_dissipation_w" type="number" required>
+  Internal heat generation in watts
+</ParamField>
+
+<ParamField body="radiator_area_m2" type="number" required>
+  Radiator surface area in square meters
+</ParamField>
+
+<ParamField body="internal_mass_kg" type="number">
+  Internal thermal mass in kg (affects transient response)
+</ParamField>
+
+<ParamField body="radiator_emissivity" type="number" default="0.9">
+  Radiator emissivity (0-1)
+</ParamField>
+
+<ParamField body="absorptivity" type="number" default="0.3">
+  Solar absorptivity (0-1)
+</ParamField>
+
+## Response
+
+```json
+{
+  "steady_state_c": 35.2,
+  "max_temp_c": 52.8,
+  "min_temp_c": 12.4,
+  "margin_c": 17.2,
+  "eclipse_duration_min": 35.5,
+  "sunlit_duration_min": 57.3,
+  "cooling_rate_c_per_min": 0.65,
+  "heating_rate_c_per_min": 0.48,
+  "thermal_profile": [
+    {"time_min": 0, "temp_c": 35.2, "phase": "sunlit"},
+    {"time_min": 57, "temp_c": 52.8, "phase": "eclipse_start"},
+    {"time_min": 92, "temp_c": 12.4, "phase": "eclipse_end"}
+  ],
+  "recommendations": [
+    "Consider active thermal control for tighter bounds",
+    "Heaters recommended for eclipse survival"
+  ]
+}
+```
+
+## Thermal Profiles
+
+### LEO Thermal Cycle
+
+```
+Temperature (C)
+     60 |    ____
+        |   /    \
+     40 |  /      \____
+        | /            \
+     20 |/              \
+        +-----------------> Time
+         Sunlit  Eclipse
+```
+
+### Operating Limits
+
+| Component | Min (C) | Max (C) |
+|-----------|---------|---------|
+| GPU/TPU | 0 | 85 |
+| CPU | -20 | 100 |
+| Memory | -40 | 85 |
+| Storage | -40 | 70 |
+| Battery | 0 | 45 |
+
+## Advanced: Time-Series Simulation
+
+Get detailed thermal behavior over multiple orbits:
+
+```python
+thermal = client.planning.thermal(
+    orbit="LEO-550",
+    power_dissipation_w=500,
+    radiator_area_m2=2.0,
+    simulation={
+        "duration_orbits": 10,
+        "time_step_sec": 60
+    }
+)
+
+# Plot thermal profile
+for point in thermal.time_series:
+    print(f"{point.time_min}: {point.temp_c}C ({point.phase})")
+```
+
+## Design Considerations
+
+<AccordionGroup>
+  <Accordion title="Radiator sizing">
+    Larger radiators = lower steady-state temperature but more mass and cost.
+    Rule of thumb: 0.1-0.2 m² per 100W dissipation for LEO.
+  </Accordion>
+
+  <Accordion title="Eclipse survival">
+    Ensure minimum temperature stays above component limits.
+    May require heaters or thermal mass.
+  </Accordion>
+
+  <Accordion title="Hot case analysis">
+    Consider worst-case solar flux (perihelion + beta angle = 0).
+    Add 10-15% margin to maximum temperature.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Latency Simulation" icon="clock" href="/planning/latency">
+    Model network latency for your orbit
+  </Card>
+  <Card title="Power Budgeting" icon="bolt" href="/planning/power">
+    Plan power generation and storage
+  </Card>
+</CardGroup>

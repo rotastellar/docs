@@ -1,0 +1,128 @@
+---
+title: Configure Adaptive Runtime
+api: POST /v1/runtime/configure
+description: "Set global adaptation and resilience policies"
+---
+
+<Warning>
+  **Coming Q2 2026** — This endpoint is a design preview.
+</Warning>
+
+## Request
+
+<ParamField body="adaptive" type="object">
+  Adaptation settings:
+  - `precision_floor` — Minimum precision (`fp16`, `int8`, `int4`)
+  - `precision_ceiling` — Starting precision
+  - `layer_skip_max` — Maximum fraction of layers to skip (0-1)
+  - `skip_strategy` — `importance`, `uniform`, `early`, `late`
+  - `context_min` — Minimum context window
+  - `context_strategy` — `truncate`, `summarize`, `slide`
+  - `thermal_threshold_c` — Start throttling temperature
+  - `thermal_critical_c` — Hard limit temperature
+  - `quality_floor` — Minimum acceptable quality (0-1)
+</ParamField>
+
+<ParamField body="resilience" type="object">
+  Fault tolerance settings:
+  - `checksum_layers` — Verify layer outputs
+  - `redundant_attention` — Duplicate attention computation
+  - `weight_verification` — `none`, `periodic`, `continuous`
+  - `max_reexecute` — Max retries per layer
+  - `reexecute_strategy` — `selective`, `full_layer`
+  - `error_threshold` — Max error rate before fail
+  - `confidence_floor` — Min acceptable confidence
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.rotastellar.com/v1/runtime/configure \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "adaptive": {
+      "precision_floor": "int8",
+      "layer_skip_max": 0.2,
+      "context_min": 2048,
+      "thermal_threshold_c": 75,
+      "quality_floor": 0.9
+    },
+    "resilience": {
+      "checksum_layers": true,
+      "redundant_attention": true,
+      "max_reexecute": 3
+    }
+  }'
+```
+
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+client.runtime.configure(
+    adaptive={
+        "precision_floor": "int8",
+        "layer_skip_max": 0.2,
+        "context_min": 2048,
+        "thermal_threshold_c": 75,
+        "quality_floor": 0.9
+    },
+    resilience={
+        "checksum_layers": True,
+        "redundant_attention": True,
+        "max_reexecute": 3
+    }
+)
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+await client.runtime.configure({
+  adaptive: {
+    precisionFloor: 'int8',
+    layerSkipMax: 0.2,
+    contextMin: 2048,
+    thermalThresholdC: 75,
+    qualityFloor: 0.9
+  },
+  resilience: {
+    checksumLayers: true,
+    redundantAttention: true,
+    maxReexecute: 3
+  }
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "status": "configured",
+  "adaptive": {
+    "precision_floor": "int8",
+    "precision_ceiling": "fp16",
+    "layer_skip_max": 0.2,
+    "skip_strategy": "importance",
+    "context_min": 2048,
+    "context_strategy": "truncate",
+    "thermal_threshold_c": 75,
+    "thermal_critical_c": 85,
+    "quality_floor": 0.9
+  },
+  "resilience": {
+    "checksum_layers": true,
+    "redundant_attention": true,
+    "weight_verification": "periodic",
+    "max_reexecute": 3,
+    "reexecute_strategy": "selective",
+    "error_threshold": 0.01,
+    "confidence_floor": 0.95
+  },
+  "updated_at": "2026-01-21T12:00:00Z"
+}
+```
+</ResponseExample>

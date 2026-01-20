@@ -1,0 +1,630 @@
+openapi: 3.1.0
+info:
+  title: RotaStellar API
+  description: |
+    API for orbital compute infrastructure - from planning tools to runtime execution.
+
+    ## Authentication
+
+    All API requests require a Bearer token in the Authorization header:
+
+    ```
+    Authorization: Bearer rs_your_api_key
+    ```
+
+    ## Base URL
+
+    ```
+    https://api.rotastellar.com/v1
+    ```
+  version: "1.0.0"
+  contact:
+    name: RotaStellar Support
+    url: https://rotastellar.com/contact/
+    email: api@rotastellar.com
+  license:
+    name: Proprietary
+    url: https://rotastellar.com/terms/
+
+servers:
+  - url: https://api.rotastellar.com/v1
+    description: Production
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Planning
+    description: Feasibility analysis, thermal modeling, latency simulation
+  - name: Intelligence
+    description: Satellite tracking, conjunction analysis, pattern detection
+  - name: Runtime
+    description: Orbit-aware scheduling, adaptive inference, resilient compute (Coming Q2 2026)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+      description: API key prefixed with `rs_`
+
+  schemas:
+    Position:
+      type: object
+      properties:
+        lat:
+          type: number
+          description: Latitude in degrees
+          example: 41.264
+        lon:
+          type: number
+          description: Longitude in degrees
+          example: -95.123
+        altitude_km:
+          type: number
+          description: Altitude in kilometers
+          example: 420.5
+        velocity_km_s:
+          type: number
+          description: Velocity in km/s
+          example: 7.66
+        timestamp:
+          type: string
+          format: date-time
+          description: Position timestamp
+          example: "2026-01-21T12:00:00Z"
+
+    Orbit:
+      type: object
+      properties:
+        epoch:
+          type: string
+          format: date-time
+        period_min:
+          type: number
+          description: Orbital period in minutes
+          example: 92.9
+        inclination_deg:
+          type: number
+          description: Inclination in degrees
+          example: 51.64
+        raan_deg:
+          type: number
+          description: Right ascension of ascending node
+        arg_perigee_deg:
+          type: number
+          description: Argument of perigee
+        eccentricity:
+          type: number
+          description: Orbital eccentricity
+          example: 0.0002
+        mean_anomaly_deg:
+          type: number
+        apogee_km:
+          type: number
+          description: Apogee altitude in km
+          example: 422
+        perigee_km:
+          type: number
+          description: Perigee altitude in km
+          example: 418
+
+    Satellite:
+      type: object
+      properties:
+        id:
+          type: string
+          description: NORAD catalog ID
+          example: "25544"
+        name:
+          type: string
+          description: Satellite name
+          example: "ISS (ZARYA)"
+        names:
+          type: array
+          items:
+            type: string
+          description: Alternative names
+        type:
+          type: string
+          enum: [PAYLOAD, ROCKET_BODY, DEBRIS]
+        operator:
+          type: string
+          example: "NASA/Roscosmos"
+        constellation:
+          type: string
+          example: "Starlink"
+        launch_date:
+          type: string
+          format: date
+        position:
+          $ref: '#/components/schemas/Position'
+        orbit:
+          $ref: '#/components/schemas/Orbit'
+
+    Conjunction:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "conj_abc123"
+        tca:
+          type: string
+          format: date-time
+          description: Time of closest approach
+        primary:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            operator:
+              type: string
+        secondary:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            type:
+              type: string
+        miss_km:
+          type: number
+          description: Predicted miss distance in km
+          example: 0.45
+        probability:
+          type: number
+          description: Collision probability
+          example: 2.3e-5
+        risk_level:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        relative_velocity_km_s:
+          type: number
+          example: 14.2
+        geometry:
+          type: object
+          properties:
+            radial_km:
+              type: number
+            in_track_km:
+              type: number
+            cross_track_km:
+              type: number
+
+    Pattern:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [maneuver, anomaly, proximity, operational]
+        subtype:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        description:
+          type: string
+        details:
+          type: object
+
+    FeasibilityResult:
+      type: object
+      properties:
+        viable:
+          type: boolean
+        recommendation:
+          type: string
+        orbit:
+          type: object
+          properties:
+            type:
+              type: string
+            altitude_km:
+              type: number
+            inclination_deg:
+              type: number
+            constellation_size:
+              type: integer
+        cost:
+          type: object
+          properties:
+            monthly:
+              type: number
+            setup:
+              type: number
+            currency:
+              type: string
+        power:
+          type: object
+          properties:
+            required_kw:
+              type: number
+            solar_array_m2:
+              type: number
+            battery_kwh:
+              type: number
+        latency:
+          type: object
+          properties:
+            p50_ms:
+              type: number
+            p95_ms:
+              type: number
+            p99_ms:
+              type: number
+        risks:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              severity:
+                type: string
+              description:
+                type: string
+
+    ThermalResult:
+      type: object
+      properties:
+        steady_state_c:
+          type: number
+        max_temp_c:
+          type: number
+        min_temp_c:
+          type: number
+        margin_c:
+          type: number
+        eclipse_duration_min:
+          type: number
+        sunlit_duration_min:
+          type: number
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    LatencyResult:
+      type: object
+      properties:
+        p50_ms:
+          type: number
+        p95_ms:
+          type: number
+        p99_ms:
+          type: number
+        min_ms:
+          type: number
+        max_ms:
+          type: number
+        coverage_percent:
+          type: number
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+paths:
+  /planning/analyze:
+    post:
+      summary: Analyze feasibility
+      description: Evaluate orbital compute feasibility for your workload
+      operationId: analyzeFeasibility
+      tags: [Planning]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workload, compute_tflops]
+              properties:
+                workload:
+                  type: string
+                  enum: [ai_inference, ai_training, data_processing, edge_compute, storage]
+                compute_tflops:
+                  type: number
+                storage_tb:
+                  type: number
+                bandwidth_gbps:
+                  type: number
+                latency_sla_ms:
+                  type: number
+                availability_sla:
+                  type: number
+                region:
+                  type: string
+      responses:
+        '200':
+          description: Feasibility analysis result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeasibilityResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /planning/thermal:
+    post:
+      summary: Simulate thermal
+      description: Model heat rejection and thermal cycles in orbit
+      operationId: simulateThermal
+      tags: [Planning]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orbit, power_dissipation_w, radiator_area_m2]
+              properties:
+                orbit:
+                  type: string
+                power_dissipation_w:
+                  type: number
+                radiator_area_m2:
+                  type: number
+                internal_mass_kg:
+                  type: number
+                radiator_emissivity:
+                  type: number
+                  default: 0.9
+                absorptivity:
+                  type: number
+                  default: 0.3
+      responses:
+        '200':
+          description: Thermal simulation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThermalResult'
+
+  /planning/latency:
+    post:
+      summary: Simulate latency
+      description: Predict network latency based on orbital geometry
+      operationId: simulateLatency
+      tags: [Planning]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orbit, ground_stations]
+              properties:
+                orbit:
+                  type: string
+                ground_stations:
+                  type: array
+                  items:
+                    type: string
+                include_isl:
+                  type: boolean
+                  default: false
+                constellation_size:
+                  type: integer
+                user_location:
+                  type: object
+                  properties:
+                    lat:
+                      type: number
+                    lon:
+                      type: number
+      responses:
+        '200':
+          description: Latency simulation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LatencyResult'
+
+  /satellites:
+    get:
+      summary: List satellites
+      description: Query the satellite catalog with filters
+      operationId: listSatellites
+      tags: [Intelligence]
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [PAYLOAD, ROCKET_BODY, DEBRIS]
+        - name: operator
+          in: query
+          schema:
+            type: string
+        - name: constellation
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of satellites
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Satellite'
+                  has_more:
+                    type: boolean
+                  cursor:
+                    type: string
+
+  /satellites/{satellite_id}:
+    get:
+      summary: Get satellite
+      description: Retrieve information about a specific satellite
+      operationId: getSatellite
+      tags: [Intelligence]
+      parameters:
+        - name: satellite_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: NORAD ID or common name
+      responses:
+        '200':
+          description: Satellite details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Satellite'
+        '404':
+          description: Satellite not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conjunctions:
+    get:
+      summary: Get conjunctions
+      description: Analyze potential collisions between space objects
+      operationId: getConjunctions
+      tags: [Intelligence]
+      parameters:
+        - name: satellite
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: threshold_km
+          in: query
+          schema:
+            type: number
+            default: 5.0
+        - name: days_ahead
+          in: query
+          schema:
+            type: integer
+            default: 7
+            maximum: 14
+        - name: min_probability
+          in: query
+          schema:
+            type: number
+      responses:
+        '200':
+          description: List of conjunctions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conjunctions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conjunction'
+                  screening_window:
+                    type: object
+                    properties:
+                      start:
+                        type: string
+                        format: date-time
+                      end:
+                        type: string
+                        format: date-time
+                  total_count:
+                    type: integer
+
+  /patterns:
+    get:
+      summary: Get patterns
+      description: Detect anomalies and maneuvers in satellite behavior
+      operationId: getPatterns
+      tags: [Intelligence]
+      parameters:
+        - name: satellite
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: lookback_days
+          in: query
+          schema:
+            type: integer
+            default: 30
+            maximum: 365
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [maneuver, anomaly, proximity, operational]
+        - name: min_confidence
+          in: query
+          schema:
+            type: number
+            default: 0.7
+      responses:
+        '200':
+          description: List of detected patterns
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  satellite:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                  patterns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Pattern'
+                  analysis_window:
+                    type: object
+                    properties:
+                      start:
+                        type: string
+                        format: date-time
+                      end:
+                        type: string
+                        format: date-time

@@ -1,0 +1,121 @@
+---
+title: Analyze Feasibility
+api: POST /v1/planning/analyze
+description: "Evaluate orbital compute feasibility for your workload"
+---
+
+## Request
+
+<ParamField body="workload" type="string" required>
+  Type of workload. Options: `ai_inference`, `ai_training`, `data_processing`, `edge_compute`, `storage`
+</ParamField>
+
+<ParamField body="compute_tflops" type="number" required>
+  Required compute capacity in TFLOPS (FP16 equivalent)
+</ParamField>
+
+<ParamField body="storage_tb" type="number">
+  Required storage in terabytes
+</ParamField>
+
+<ParamField body="bandwidth_gbps" type="number">
+  Required bandwidth to/from ground in Gbps
+</ParamField>
+
+<ParamField body="latency_sla_ms" type="number">
+  Maximum acceptable latency in milliseconds
+</ParamField>
+
+<ParamField body="availability_sla" type="number">
+  Required availability (e.g., 0.999 for 99.9%)
+</ParamField>
+
+<ParamField body="region" type="string">
+  Geographic region: `global`, `north-america`, `europe`, `asia-pacific`
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.rotastellar.com/v1/planning/analyze \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workload": "ai_inference",
+    "compute_tflops": 100,
+    "storage_tb": 10,
+    "bandwidth_gbps": 1,
+    "latency_sla_ms": 50
+  }'
+```
+
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+result = client.planning.analyze(
+    workload="ai_inference",
+    compute_tflops=100,
+    storage_tb=10,
+    bandwidth_gbps=1,
+    latency_sla_ms=50
+)
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const result = await client.planning.analyze({
+  workload: 'ai_inference',
+  computeTflops: 100,
+  storageTb: 10,
+  bandwidthGbps: 1,
+  latencySlams: 50
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "viable": true,
+  "recommendation": "LEO constellation with 6 satellites provides optimal balance of latency and cost",
+  "orbit": {
+    "type": "LEO",
+    "altitude_km": 550,
+    "inclination_deg": 53,
+    "constellation_size": 6
+  },
+  "cost": {
+    "monthly": 125000,
+    "setup": 2500000,
+    "currency": "USD"
+  },
+  "power": {
+    "required_kw": 15.5,
+    "solar_array_m2": 45,
+    "battery_kwh": 120
+  },
+  "latency": {
+    "p50_ms": 25,
+    "p95_ms": 45,
+    "p99_ms": 65
+  },
+  "risks": [
+    {
+      "category": "thermal",
+      "severity": "medium",
+      "description": "Eclipse periods require thermal management"
+    }
+  ],
+  "alternatives": [
+    {
+      "orbit": "MEO",
+      "tradeoff": "Higher latency (80ms) but 40% lower cost"
+    }
+  ]
+}
+```
+</ResponseExample>

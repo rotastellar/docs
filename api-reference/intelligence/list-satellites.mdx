@@ -1,0 +1,102 @@
+---
+title: List Satellites
+api: GET /v1/satellites
+description: "Query the satellite catalog with filters"
+---
+
+## Request
+
+<ParamField query="type" type="string">
+  Filter by object type: `PAYLOAD`, `ROCKET_BODY`, `DEBRIS`
+</ParamField>
+
+<ParamField query="operator" type="string">
+  Filter by operator (e.g., "SpaceX", "OneWeb")
+</ParamField>
+
+<ParamField query="constellation" type="string">
+  Filter by constellation (e.g., "Starlink", "OneWeb")
+</ParamField>
+
+<ParamField query="limit" type="integer" default="100">
+  Maximum results (1-1000)
+</ParamField>
+
+<ParamField query="cursor" type="string">
+  Pagination cursor for next page
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://api.rotastellar.com/v1/satellites?constellation=Starlink&limit=100" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+starlinks = client.intelligence.satellites(
+    constellation="Starlink",
+    limit=100
+)
+
+for sat in starlinks:
+    print(sat.name)
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const starlinks = await client.intelligence.satellites({
+  constellation: 'Starlink',
+  limit: 100
+});
+
+for (const sat of starlinks) {
+  console.log(sat.name);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "items": [
+    {
+      "id": "44235",
+      "name": "STARLINK-1007",
+      "type": "PAYLOAD",
+      "operator": "SpaceX",
+      "constellation": "Starlink",
+      "launch_date": "2019-11-11",
+      "position": {
+        "lat": 45.2,
+        "lon": -122.5,
+        "altitude_km": 550,
+        "timestamp": "2026-01-21T12:00:00Z"
+      }
+    },
+    {
+      "id": "44236",
+      "name": "STARLINK-1008",
+      "type": "PAYLOAD",
+      "operator": "SpaceX",
+      "constellation": "Starlink",
+      "launch_date": "2019-11-11",
+      "position": {
+        "lat": 32.1,
+        "lon": -98.3,
+        "altitude_km": 548,
+        "timestamp": "2026-01-21T12:00:00Z"
+      }
+    }
+  ],
+  "has_more": true,
+  "cursor": "eyJsYXN0X2lkIjoiNDQyMzYifQ=="
+}
+```
+</ResponseExample>
