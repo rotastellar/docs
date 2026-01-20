@@ -1,0 +1,100 @@
+---
+title: Get Conjunctions
+api: GET /v1/conjunctions
+description: "Analyze potential collisions between space objects"
+---
+
+## Request
+
+<ParamField query="satellite" type="string" required>
+  Primary satellite (NORAD ID or name)
+</ParamField>
+
+<ParamField query="threshold_km" type="number" default="5.0">
+  Maximum miss distance to report (km)
+</ParamField>
+
+<ParamField query="days_ahead" type="integer" default="7">
+  Prediction window (1-14 days)
+</ParamField>
+
+<ParamField query="min_probability" type="number">
+  Minimum collision probability to report (e.g., 1e-6)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://api.rotastellar.com/v1/conjunctions?satellite=STARLINK-1234&threshold_km=5&days_ahead=7" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+conjunctions = client.intelligence.conjunctions(
+    satellite="STARLINK-1234",
+    threshold_km=5.0,
+    days_ahead=7
+)
+
+for conj in conjunctions:
+    print(f"TCA: {conj.tca}, Miss: {conj.miss_km}km")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const conjunctions = await client.intelligence.conjunctions({
+  satellite: 'STARLINK-1234',
+  thresholdKm: 5.0,
+  daysAhead: 7
+});
+
+for (const conj of conjunctions) {
+  console.log(`TCA: ${conj.tca}, Miss: ${conj.missKm}km`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "conjunctions": [
+    {
+      "id": "conj_abc123",
+      "tca": "2026-01-23T14:32:15Z",
+      "primary": {
+        "id": "12345",
+        "name": "STARLINK-1234",
+        "operator": "SpaceX"
+      },
+      "secondary": {
+        "id": "45678",
+        "name": "COSMOS 2251 DEB",
+        "type": "DEBRIS"
+      },
+      "miss_km": 0.45,
+      "probability": 2.3e-5,
+      "risk_level": "HIGH",
+      "relative_velocity_km_s": 14.2,
+      "geometry": {
+        "radial_km": 0.12,
+        "in_track_km": 0.38,
+        "cross_track_km": 0.18
+      },
+      "covariance_available": true,
+      "data_quality": "GOOD"
+    }
+  ],
+  "screening_window": {
+    "start": "2026-01-21T00:00:00Z",
+    "end": "2026-01-28T00:00:00Z"
+  },
+  "total_count": 12
+}
+```
+</ResponseExample>

@@ -1,0 +1,287 @@
+---
+title: Pattern Detection
+description: "Detect anomalies and maneuvers in satellite behavior"
+---
+
+# Pattern Detection
+
+Detect unusual behavior, maneuvers, and anomalies in satellite operations using AI-powered pattern analysis.
+
+<Info>
+  **Status:** Early Access — [Request API key](https://rotastellar.com/early-access/)
+</Info>
+
+## Overview
+
+Pattern detection identifies:
+
+- **Maneuvers** — Orbit-raising, lowering, plane changes
+- **Anomalies** — Unexpected behavior deviations
+- **Operational changes** — Mode changes, activation/deactivation
+- **Proximity operations** — Rendezvous and docking
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+# Get detected patterns for a satellite
+patterns = client.intelligence.patterns(
+    satellite="COSMOS-2542",
+    lookback_days=30
+)
+
+for pattern in patterns:
+    print(f"Type: {pattern.type}")
+    print(f"Time: {pattern.timestamp}")
+    print(f"Confidence: {pattern.confidence}")
+    print(f"Description: {pattern.description}")
+    print()
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const patterns = await client.intelligence.patterns({
+  satellite: 'COSMOS-2542',
+  lookbackDays: 30
+});
+
+for (const pattern of patterns) {
+  console.log(`${pattern.type}: ${pattern.description}`);
+  console.log(`Confidence: ${pattern.confidence}`);
+}
+```
+
+```bash cURL
+curl "https://api.rotastellar.com/v1/patterns?satellite=COSMOS-2542&lookback_days=30" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+</CodeGroup>
+
+## Get Patterns
+
+```
+GET /v1/patterns
+```
+
+<ParamField query="satellite" type="string" required>
+  Satellite ID or name
+</ParamField>
+
+<ParamField query="lookback_days" type="integer" default="30">
+  Analysis window (1-365 days)
+</ParamField>
+
+<ParamField query="type" type="string">
+  Filter by pattern type: `maneuver`, `anomaly`, `proximity`, `operational`
+</ParamField>
+
+<ParamField query="min_confidence" type="number" default="0.7">
+  Minimum confidence threshold (0-1)
+</ParamField>
+
+### Response
+
+```json
+{
+  "satellite": {
+    "id": "44832",
+    "name": "COSMOS-2542"
+  },
+  "patterns": [
+    {
+      "id": "pat_xyz789",
+      "type": "maneuver",
+      "subtype": "orbit_raise",
+      "timestamp": "2026-01-15T08:23:00Z",
+      "confidence": 0.95,
+      "description": "Orbit raising maneuver detected, altitude increased by 12km",
+      "details": {
+        "delta_altitude_km": 12.3,
+        "delta_v_estimated_m_s": 2.1,
+        "pre_altitude_km": 538,
+        "post_altitude_km": 550.3
+      }
+    },
+    {
+      "id": "pat_abc456",
+      "type": "proximity",
+      "subtype": "approach",
+      "timestamp": "2026-01-10T14:45:00Z",
+      "confidence": 0.88,
+      "description": "Approached USA-245 within 50km, maintained position for 6 hours",
+      "details": {
+        "target": "USA-245",
+        "min_distance_km": 48.2,
+        "duration_hours": 6.2
+      }
+    },
+    {
+      "id": "pat_def123",
+      "type": "anomaly",
+      "subtype": "attitude_change",
+      "timestamp": "2026-01-05T22:10:00Z",
+      "confidence": 0.72,
+      "description": "Unusual attitude variation detected, possible sensor reorientation",
+      "details": {
+        "magnitude_deg": 15.3,
+        "duration_min": 45
+      }
+    }
+  ],
+  "analysis_window": {
+    "start": "2025-12-22T00:00:00Z",
+    "end": "2026-01-21T00:00:00Z"
+  }
+}
+```
+
+## Pattern Types
+
+### Maneuvers
+
+Detected orbital changes:
+
+| Subtype | Description |
+|---------|-------------|
+| `orbit_raise` | Altitude increase |
+| `orbit_lower` | Altitude decrease |
+| `plane_change` | Inclination adjustment |
+| `phasing` | Along-track position adjustment |
+| `station_keeping` | Maintenance maneuver |
+| `deorbit` | End-of-life maneuver |
+
+```python
+# Get only maneuvers
+maneuvers = client.intelligence.patterns(
+    satellite="STARLINK-1234",
+    type="maneuver",
+    lookback_days=90
+)
+
+for m in maneuvers:
+    print(f"{m.timestamp}: {m.subtype}")
+    print(f"  Delta-V: {m.details.delta_v_estimated_m_s} m/s")
+```
+
+### Anomalies
+
+Unexpected behavior deviations:
+
+| Subtype | Description |
+|---------|-------------|
+| `attitude_change` | Unexpected orientation change |
+| `tumbling` | Loss of attitude control |
+| `fragmentation` | Debris generation event |
+| `signal_loss` | Communication anomaly |
+| `trajectory_deviation` | Unexpected position change |
+
+```python
+# Get anomalies
+anomalies = client.intelligence.patterns(
+    satellite="DEBRIS-12345",
+    type="anomaly",
+    lookback_days=7
+)
+
+for a in anomalies:
+    if a.subtype == "fragmentation":
+        print(f"ALERT: Possible fragmentation at {a.timestamp}")
+```
+
+### Proximity Operations
+
+Close approaches and rendezvous:
+
+```python
+# Detect proximity operations
+proximity = client.intelligence.patterns(
+    satellite="INSPECTOR-SAT",
+    type="proximity",
+    lookback_days=60
+)
+
+for p in proximity:
+    print(f"Approached {p.details.target}")
+    print(f"  Min distance: {p.details.min_distance_km} km")
+    print(f"  Duration: {p.details.duration_hours} hours")
+```
+
+## Real-Time Anomaly Detection
+
+Get immediate alerts for anomalies:
+
+<CodeGroup>
+```python Python
+# Set up anomaly monitoring
+monitor = client.intelligence.patterns.monitor(
+    satellites=["CRITICAL-SAT-1", "CRITICAL-SAT-2"],
+    types=["anomaly", "proximity"],
+    min_confidence=0.8,
+    webhook_url="https://your-app.com/pattern-alerts"
+)
+```
+
+```bash cURL
+curl -X POST https://api.rotastellar.com/v1/patterns/monitor \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "satellites": ["CRITICAL-SAT-1", "CRITICAL-SAT-2"],
+    "types": ["anomaly", "proximity"],
+    "min_confidence": 0.8,
+    "webhook_url": "https://your-app.com/pattern-alerts"
+  }'
+```
+</CodeGroup>
+
+## Historical Analysis
+
+Analyze long-term behavioral patterns:
+
+```python
+# Get 1-year pattern history
+history = client.intelligence.patterns(
+    satellite="GEO-SAT-1",
+    lookback_days=365
+)
+
+# Analyze maneuver frequency
+maneuvers = [p for p in history if p.type == "maneuver"]
+print(f"Total maneuvers: {len(maneuvers)}")
+print(f"Station-keeping: {sum(1 for m in maneuvers if m.subtype == 'station_keeping')}")
+```
+
+## Batch Analysis
+
+Analyze patterns across multiple satellites:
+
+```python
+# Analyze entire constellation
+results = client.intelligence.patterns.batch(
+    satellites=["SAT-001", "SAT-002", "SAT-003"],
+    lookback_days=30
+)
+
+for sat_id, patterns in results.items():
+    anomalies = [p for p in patterns if p.type == "anomaly"]
+    if anomalies:
+        print(f"{sat_id}: {len(anomalies)} anomalies detected")
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Webhooks" icon="bell" href="/intelligence/webhooks">
+    Set up real-time pattern alerts
+  </Card>
+  <Card title="Satellite Tracking" icon="satellite" href="/intelligence/satellites">
+    Track satellite positions
+  </Card>
+</CardGroup>

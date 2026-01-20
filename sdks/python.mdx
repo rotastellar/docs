@@ -1,0 +1,317 @@
+---
+title: Python SDK
+description: "Official Python SDK for the RotaStellar API"
+---
+
+# Python SDK
+
+The official Python SDK for RotaStellar, providing full access to Planning, Intelligence, and Runtime APIs.
+
+<Info>
+  **Status:** Early Access — [Request API key](https://rotastellar.com/early-access/)
+</Info>
+
+## Installation
+
+```bash
+pip install rotastellar
+```
+
+### Requirements
+
+- Python 3.9+
+- No additional dependencies for core functionality
+
+### Optional Dependencies
+
+```bash
+# For async support
+pip install rotastellar[async]
+
+# For data analysis utilities
+pip install rotastellar[pandas]
+
+# All optional dependencies
+pip install rotastellar[all]
+```
+
+## Quick Start
+
+```python
+from rotastellar import RotaStellar
+
+# Initialize client
+client = RotaStellar(api_key="rs_your_api_key")
+
+# Or use environment variable
+# export ROTASTELLAR_API_KEY=rs_your_api_key
+client = RotaStellar()
+
+# Track a satellite
+iss = client.intelligence.satellite("ISS")
+print(iss.position())
+```
+
+## Client Configuration
+
+```python
+from rotastellar import RotaStellar
+
+client = RotaStellar(
+    api_key="rs_...",
+    base_url="https://api.rotastellar.com/v1",  # Default
+    timeout=30.0,     # Request timeout in seconds
+    max_retries=3,    # Retry failed requests
+    verify_ssl=True   # SSL verification
+)
+```
+
+## Planning API
+
+```python
+# Feasibility analysis
+feasibility = client.planning.analyze(
+    workload="ai_inference",
+    compute_tflops=100,
+    storage_tb=10,
+    bandwidth_gbps=1
+)
+
+print(f"Recommended: {feasibility.recommendation}")
+print(f"Orbit: {feasibility.orbit}")
+print(f"Monthly cost: ${feasibility.cost_monthly}")
+
+# Thermal simulation
+thermal = client.planning.thermal(
+    orbit="LEO-550",
+    power_dissipation_w=500,
+    radiator_area_m2=2.0
+)
+
+print(f"Max temp: {thermal.max_temp_c}C")
+print(f"Eclipse temp: {thermal.eclipse_temp_c}C")
+
+# Latency simulation
+latency = client.planning.latency(
+    orbit="LEO-550",
+    ground_stations=["us-west", "europe", "asia"],
+    include_isl=True
+)
+
+print(f"P50: {latency.p50_ms}ms")
+print(f"P99: {latency.p99_ms}ms")
+
+# Power budgeting
+power = client.planning.power(
+    orbit="LEO-550",
+    compute_load_w=500,
+    duty_cycle=0.8,
+    mission_life_years=5
+)
+
+print(f"Solar array: {power.solar_array_m2} m2")
+print(f"Battery: {power.battery_kwh} kWh")
+```
+
+## Intelligence API
+
+```python
+# Get satellite
+sat = client.intelligence.satellite("STARLINK-1234")
+print(sat.position())
+print(sat.orbit())
+
+# List satellites
+starlinks = client.intelligence.satellites(
+    constellation="Starlink",
+    limit=100
+)
+
+# Get trajectory
+from datetime import datetime, timedelta
+
+trajectory = sat.trajectory(
+    start=datetime.utcnow(),
+    end=datetime.utcnow() + timedelta(hours=24),
+    interval_sec=300
+)
+
+for point in trajectory.points:
+    print(f"{point.timestamp}: {point.lat}, {point.lon}")
+
+# Conjunction analysis
+conjunctions = client.intelligence.conjunctions(
+    satellite="STARLINK-1234",
+    threshold_km=1.0,
+    days_ahead=7
+)
+
+for conj in conjunctions:
+    print(f"TCA: {conj.tca}, Miss: {conj.miss_km}km, Pc: {conj.probability}")
+
+# Pattern detection
+patterns = client.intelligence.patterns(
+    satellite="COSMOS-2542",
+    lookback_days=30
+)
+
+for pattern in patterns:
+    print(f"{pattern.type}: {pattern.description}")
+```
+
+## Runtime API (Coming Q2 2026)
+
+```python
+# Submit job
+job = client.runtime.submit(
+    model="llama-70b",
+    prompt="...",
+    constraints={
+        "latency_sla_ms": 200,
+        "energy_budget_wh": 0.5
+    }
+)
+
+# Get result
+result = job.result(timeout=30)
+print(result.text)
+print(result.adaptations)  # What the runtime adjusted
+```
+
+## Async Support
+
+```python
+import asyncio
+from rotastellar import AsyncRotaStellar
+
+async def main():
+    client = AsyncRotaStellar(api_key="rs_...")
+
+    # Async satellite tracking
+    iss = await client.intelligence.satellite("ISS")
+    pos = await iss.position()
+    print(pos)
+
+    # Concurrent requests
+    satellites = ["ISS", "STARLINK-1234", "COSMOS-2542"]
+    tasks = [client.intelligence.satellite(s) for s in satellites]
+    results = await asyncio.gather(*tasks)
+
+    for sat in results:
+        pos = await sat.position()
+        print(f"{sat.name}: {pos.lat}, {pos.lon}")
+
+asyncio.run(main())
+```
+
+## Streaming
+
+For long-running operations:
+
+```python
+# Stream conjunction updates
+for update in client.intelligence.conjunctions.stream(
+    satellite="STARLINK-1234",
+    threshold_km=5.0
+):
+    print(f"New conjunction: {update.tca}, Miss: {update.miss_km}km")
+```
+
+## Error Handling
+
+```python
+from rotastellar import RotaStellar
+from rotastellar.exceptions import (
+    AuthenticationError,
+    RateLimitError,
+    NotFoundError,
+    ValidationError,
+    APIError
+)
+
+client = RotaStellar(api_key="rs_...")
+
+try:
+    sat = client.intelligence.satellite("INVALID-ID")
+except NotFoundError:
+    print("Satellite not found")
+except RateLimitError as e:
+    print(f"Rate limited. Retry after {e.retry_after}s")
+except AuthenticationError:
+    print("Invalid API key")
+except ValidationError as e:
+    print(f"Invalid request: {e.message}")
+except APIError as e:
+    print(f"API error: {e.message}")
+```
+
+## Type Hints
+
+The SDK includes full type annotations for IDE support:
+
+```python
+from rotastellar import RotaStellar
+from rotastellar.types import Position, Orbit, Satellite, Conjunction
+
+client = RotaStellar(api_key="rs_...")
+
+sat: Satellite = client.intelligence.satellite("ISS")
+pos: Position = sat.position()
+orbit: Orbit = sat.orbit()
+
+# IDE will provide autocomplete for all fields
+print(pos.lat)          # float
+print(pos.lon)          # float
+print(pos.altitude_km)  # float
+print(orbit.period_min) # float
+```
+
+## Pagination
+
+Handle large result sets:
+
+```python
+# Automatic pagination
+for sat in client.intelligence.satellites(constellation="Starlink"):
+    print(sat.name)  # Automatically fetches next page
+
+# Manual pagination
+page = client.intelligence.satellites(
+    constellation="Starlink",
+    limit=100
+)
+
+while page:
+    for sat in page.items:
+        print(sat.name)
+
+    if page.has_more:
+        page = page.next_page()
+    else:
+        break
+```
+
+## Logging
+
+Enable debug logging:
+
+```python
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
+# Or configure specific logger
+logger = logging.getLogger("rotastellar")
+logger.setLevel(logging.DEBUG)
+```
+
+## Source Code
+
+<CardGroup cols={2}>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/rotastellar/rotastellar-python">
+    View source, report issues, and contribute.
+  </Card>
+  <Card title="PyPI Package" icon="python" href="https://pypi.org/project/rotastellar/">
+    Package page and version history.
+  </Card>
+</CardGroup>

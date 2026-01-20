@@ -1,0 +1,102 @@
+---
+title: Simulate Latency
+api: POST /v1/planning/latency
+description: "Predict network latency based on orbital geometry"
+---
+
+## Request
+
+<ParamField body="orbit" type="string" required>
+  Orbit specification: `LEO-550`, `MEO-8000`, `GEO`, etc.
+</ParamField>
+
+<ParamField body="ground_stations" type="array" required>
+  List of ground station regions: `us-west`, `us-east`, `europe`, `asia`, etc.
+</ParamField>
+
+<ParamField body="include_isl" type="boolean" default="false">
+  Include inter-satellite link routing
+</ParamField>
+
+<ParamField body="constellation_size" type="number">
+  Number of satellites for ISL routing options
+</ParamField>
+
+<ParamField body="user_location" type="object">
+  Specific user location: `{"lat": 37.77, "lon": -122.41}`
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.rotastellar.com/v1/planning/latency \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orbit": "LEO-550",
+    "ground_stations": ["us-west", "us-east", "europe", "asia"],
+    "include_isl": true
+  }'
+```
+
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+latency = client.planning.latency(
+    orbit="LEO-550",
+    ground_stations=["us-west", "us-east", "europe", "asia"],
+    include_isl=True
+)
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const latency = await client.planning.latency({
+  orbit: 'LEO-550',
+  groundStations: ['us-west', 'us-east', 'europe', 'asia'],
+  includeIsl: true
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "p50_ms": 25,
+  "p95_ms": 48,
+  "p99_ms": 72,
+  "min_ms": 12,
+  "max_ms": 145,
+  "coverage_percent": 98.5,
+  "breakdown": {
+    "propagation_ms": 8,
+    "processing_ms": 5,
+    "handover_ms": 12,
+    "isl_hops_avg": 1.3
+  },
+  "ground_station_stats": [
+    {
+      "station": "us-west",
+      "contact_percent": 35,
+      "avg_elevation_deg": 42
+    },
+    {
+      "station": "europe",
+      "contact_percent": 28,
+      "avg_elevation_deg": 38
+    }
+  ],
+  "gaps": [
+    {
+      "start_min": 23,
+      "duration_min": 4,
+      "region": "pacific"
+    }
+  ]
+}
+```
+</ResponseExample>

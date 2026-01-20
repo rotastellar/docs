@@ -1,0 +1,126 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "RotaStellar API",
+  "logo": {
+    "dark": "/images/logo-dark.svg",
+    "light": "/images/logo-light.svg"
+  },
+  "favicon": "/images/favicon.svg",
+  "colors": {
+    "primary": "#0d9488",
+    "light": "#14b8a6",
+    "dark": "#0f766e",
+    "background": {
+      "dark": "#0a0a0a",
+      "light": "#ffffff"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Main Site",
+      "url": "https://rotastellar.com"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get API Key",
+    "url": "https://rotastellar.com/early-access/"
+  },
+  "tabs": [
+    {
+      "name": "Documentation",
+      "url": "/"
+    },
+    {
+      "name": "API Reference",
+      "url": "/api-reference"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Early Access",
+      "icon": "rocket",
+      "url": "https://rotastellar.com/early-access/"
+    },
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/rotastellar"
+    },
+    {
+      "name": "Status",
+      "icon": "signal",
+      "url": "https://status.rotastellar.com"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "introduction",
+        "quickstart",
+        "authentication"
+      ]
+    },
+    {
+      "group": "Planning Tools",
+      "pages": [
+        "planning/overview",
+        "planning/feasibility",
+        "planning/thermal",
+        "planning/latency",
+        "planning/power"
+      ]
+    },
+    {
+      "group": "Orbital Intelligence",
+      "pages": [
+        "intelligence/overview",
+        "intelligence/satellites",
+        "intelligence/conjunctions",
+        "intelligence/patterns",
+        "intelligence/webhooks"
+      ]
+    },
+    {
+      "group": "Orbital Runtime",
+      "pages": [
+        "runtime/overview",
+        "runtime/scheduler",
+        "runtime/adaptive",
+        "runtime/resilient"
+      ]
+    },
+    {
+      "group": "SDKs",
+      "pages": [
+        "sdks/python",
+        "sdks/node",
+        "sdks/rust"
+      ]
+    },
+    {
+      "group": "Resources",
+      "pages": [
+        "changelog"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/rotastellar",
+    "x": "https://x.com/rotastellar",
+    "linkedin": "https://linkedin.com/company/rotastellar"
+  },
+  "feedback": {
+    "thumbsRating": true
+  },
+  "modeToggle": {
+    "default": "dark"
+  },
+  "api": {
+    "baseUrl": "https://api.rotastellar.com/v1",
+    "auth": {
+      "method": "bearer"
+    }
+  },
+  "openapi": "openapi.yaml"
+}

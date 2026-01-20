@@ -1,0 +1,202 @@
+---
+title: Orbital Runtime Overview
+description: "Execution primitives for computing beyond Earth"
+---
+
+# Orbital Runtime
+
+<Warning>
+  **Coming Q2 2026** — The Orbital Runtime is currently in development.
+  This documentation is a design preview. [Request early access](https://rotastellar.com/early-access/)
+  to be notified when it's available.
+</Warning>
+
+## Overview
+
+The Orbital Runtime provides execution primitives designed for the unique constraints of space:
+
+<CardGroup cols={3}>
+  <Card title="Orbit Scheduler" icon="calendar" href="/runtime/scheduler">
+    Workload orchestration across Earth and orbital nodes
+  </Card>
+  <Card title="Adaptive Runtime" icon="gauge" href="/runtime/adaptive">
+    Energy and thermal-aware inference execution
+  </Card>
+  <Card title="Resilient Compute" icon="shield" href="/runtime/resilient">
+    Fault-tolerant ML for radiation environments
+  </Card>
+</CardGroup>
+
+## Why a New Runtime?
+
+Standard cloud runtimes assume:
+
+| Assumption | Reality in Space |
+|------------|------------------|
+| Always-on network | Intermittent connectivity |
+| Stable power | Variable solar/eclipse cycles |
+| Predictable latency | Orbital geometry dependent |
+| Reliable hardware | Radiation-induced faults |
+
+The Orbital Runtime is built from first principles for these constraints.
+
+## Architecture Preview
+
+```
+┌─────────────────────────────────────────────────────┐
+│                 Your Application                     │
+└─────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────┐
+│              RotaStellar Orbital Runtime             │
+├─────────────────────────────────────────────────────┤
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │
+│  │   Orbit     │ │  Adaptive   │ │  Resilient  │   │
+│  │  Scheduler  │ │   Runtime   │ │   Compute   │   │
+│  └─────────────┘ └─────────────┘ └─────────────┘   │
+└─────────────────────────────────────────────────────┘
+                          │
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+    ┌──────────┐   ┌──────────┐   ┌──────────┐
+    │  Earth   │   │  LEO     │   │  GEO     │
+    │  DC      │   │  Node    │   │  Node    │
+    └──────────┘   └──────────┘   └──────────┘
+```
+
+## API Preview
+
+<Info>
+  This API is subject to change before release.
+</Info>
+
+### Submit a Job
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+# Submit inference job with constraints
+job = client.runtime.submit(
+    model="llama-70b",
+    prompt="Analyze this satellite telemetry...",
+    constraints={
+        "latency_sla_ms": 200,
+        "energy_budget_wh": 0.5,
+        "quality": "best_effort"  # or "exact"
+    }
+)
+
+# Job is routed to optimal node (Earth or orbit)
+print(f"Job ID: {job.id}")
+print(f"Routed to: {job.node}")  # e.g., "orbital-leo-1"
+print(f"Estimated completion: {job.eta}")
+
+# Get result
+result = job.result(timeout=30)
+print(f"Response: {result.text}")
+print(f"Adaptations: {result.adaptations}")
+print(f"Energy used: {result.energy_wh} Wh")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const job = await client.runtime.submit({
+  model: 'llama-70b',
+  prompt: 'Analyze this satellite telemetry...',
+  constraints: {
+    latencySlams: 200,
+    energyBudgetWh: 0.5,
+    quality: 'best_effort'
+  }
+});
+
+console.log(`Job ID: ${job.id}`);
+console.log(`Routed to: ${job.node}`);
+
+const result = await job.result({ timeout: 30000 });
+console.log(`Response: ${result.text}`);
+```
+
+```rust Rust
+use rotastellar::RotaStellar;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_...")?;
+
+    let job = client.runtime().submit(JobRequest {
+        model: "llama-70b".to_string(),
+        prompt: "Analyze this satellite telemetry...".to_string(),
+        constraints: Constraints {
+            latency_sla_ms: Some(200),
+            energy_budget_wh: Some(0.5),
+            quality: Quality::BestEffort,
+        },
+    }).await?;
+
+    println!("Job ID: {}", job.id);
+    println!("Routed to: {}", job.node);
+
+    let result = job.result(30).await?;
+    println!("Response: {}", result.text);
+
+    Ok(())
+}
+```
+
+```bash cURL
+curl -X POST https://api.rotastellar.com/v1/runtime/jobs \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama-70b",
+    "prompt": "Analyze this satellite telemetry...",
+    "constraints": {
+      "latency_sla_ms": 200,
+      "energy_budget_wh": 0.5,
+      "quality": "best_effort"
+    }
+  }'
+```
+</CodeGroup>
+
+### Configure Adaptive Behavior
+
+```python
+# Set global adaptation preferences
+client.runtime.configure(
+    adaptive={
+        "precision_floor": "int8",      # Don't go below INT8
+        "layer_skip_max": 0.2,          # Skip up to 20% of layers
+        "context_min": 2048,            # Minimum context window
+        "thermal_threshold_c": 75       # Throttle above 75C
+    },
+    resilience={
+        "checksum_layers": True,
+        "redundant_attention": True,
+        "max_reexecute": 3
+    }
+)
+```
+
+## Timeline
+
+| Milestone | Target |
+|-----------|--------|
+| Design preview (this doc) | Now |
+| Simulator SDK | Q2 2026 |
+| Beta with early partners | Q4 2026 |
+| General availability | 2027 |
+
+## Get Notified
+
+<Card title="Request Early Access" icon="bell" href="https://rotastellar.com/early-access/">
+  Be the first to know when Orbital Runtime is available.
+</Card>

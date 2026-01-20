@@ -1,0 +1,135 @@
+---
+title: Authentication
+description: "Secure your API requests"
+---
+
+# Authentication
+
+The RotaStellar API uses API keys for authentication. All requests must include a valid API key.
+
+## Getting an API Key
+
+<Steps>
+  <Step title="Request Access">
+    Sign up for [early access](https://rotastellar.com/early-access/) to receive your API credentials.
+  </Step>
+  <Step title="Receive Credentials">
+    You'll receive an email with your API key (starts with `rs_`).
+  </Step>
+  <Step title="Store Securely">
+    Store your API key securely. Never commit it to version control.
+  </Step>
+</Steps>
+
+## Using Your API Key
+
+Include your API key in the `Authorization` header with the `Bearer` prefix:
+
+```bash
+Authorization: Bearer rs_your_api_key
+```
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl https://api.rotastellar.com/v1/satellites/ISS \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellar
+
+# From parameter
+client = RotaStellar(api_key="rs_your_api_key")
+
+# Or from environment variable
+# export ROTASTELLAR_API_KEY=rs_your_api_key
+client = RotaStellar()  # Reads from env
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+// From parameter
+const client = new RotaStellar({ apiKey: 'rs_your_api_key' });
+
+// Or from environment variable
+// export ROTASTELLAR_API_KEY=rs_your_api_key
+const client = new RotaStellar();  // Reads from env
+```
+
+```rust Rust
+use rotastellar::RotaStellar;
+
+// From parameter
+let client = RotaStellar::new("rs_your_api_key")?;
+
+// Or from environment variable
+// export ROTASTELLAR_API_KEY=rs_your_api_key
+let client = RotaStellar::from_env()?;
+```
+</CodeGroup>
+
+## API Key Types
+
+| Type | Prefix | Use Case |
+|------|--------|----------|
+| Live | `rs_live_` | Production applications |
+| Test | `rs_test_` | Development and testing |
+
+<Warning>
+  Test keys have rate limits and may return simulated data.
+  Use live keys for production applications.
+</Warning>
+
+## Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Never expose keys in client-side code">
+    API keys should only be used in server-side code. Never include them in
+    JavaScript bundles, mobile apps, or anywhere users can inspect.
+  </Accordion>
+
+  <Accordion title="Use environment variables">
+    Store API keys in environment variables, not in code:
+    ```bash
+    export ROTASTELLAR_API_KEY=rs_live_...
+    ```
+  </Accordion>
+
+  <Accordion title="Rotate keys periodically">
+    Rotate your API keys periodically and immediately if you suspect compromise.
+  </Accordion>
+
+  <Accordion title="Use separate keys per environment">
+    Use different API keys for development, staging, and production.
+  </Accordion>
+</AccordionGroup>
+
+## Revoking Keys
+
+If your API key is compromised:
+
+1. Go to your [dashboard](https://rotastellar.com/dashboard/)
+2. Navigate to API Keys
+3. Click "Revoke" on the compromised key
+4. Generate a new key
+5. Update your applications
+
+## Errors
+
+| Code | Description |
+|------|-------------|
+| `401` | Invalid or missing API key |
+| `403` | API key doesn't have permission for this endpoint |
+| `429` | Rate limit exceeded |
+
+```json
+{
+  "error": {
+    "code": "invalid_api_key",
+    "message": "The API key provided is invalid or has been revoked."
+  }
+}
+```

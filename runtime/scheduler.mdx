@@ -1,0 +1,245 @@
+---
+title: Orbit Scheduler
+description: "Workload orchestration across Earth and orbital nodes"
+---
+
+# Orbit Scheduler
+
+<Warning>
+  **Coming Q2 2026** — This is a design preview.
+  [Request early access](https://rotastellar.com/early-access/) to be notified when available.
+</Warning>
+
+## Overview
+
+The Orbit Scheduler orchestrates workloads across heterogeneous compute nodes spanning Earth datacenters and orbital infrastructure. It understands orbital mechanics, energy availability, and network topology to make optimal placement decisions.
+
+## Key Capabilities
+
+- **Orbit-aware scheduling** — Accounts for orbital position, eclipse periods, ground contacts
+- **Energy optimization** — Routes work based on power availability
+- **Latency-aware routing** — Minimizes round-trip time based on geometry
+- **Fault tolerance** — Automatic failover between nodes
+- **Workload splitting** — Distribute work across Earth + orbit
+
+## Architecture
+
+```
+                    ┌─────────────────────┐
+                    │   Orbit Scheduler   │
+                    │                     │
+                    │  ┌───────────────┐  │
+                    │  │ Placement     │  │
+                    │  │ Engine        │  │
+                    │  └───────────────┘  │
+                    │  ┌───────────────┐  │
+                    │  │ Orbit Model   │  │
+                    │  └───────────────┘  │
+                    │  ┌───────────────┐  │
+                    │  │ Energy Model  │  │
+                    │  └───────────────┘  │
+                    └─────────┬───────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+  ┌──────────┐         ┌──────────┐         ┌──────────┐
+  │ Earth DC │         │ LEO-1    │         │ LEO-2    │
+  │ us-west  │         │ 550km    │         │ 550km    │
+  └──────────┘         └──────────┘         └──────────┘
+```
+
+## API Preview
+
+### Submit Job with Placement Hints
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+job = client.runtime.submit(
+    model="llama-70b",
+    prompt="...",
+    placement={
+        "prefer": "orbital",           # Prefer orbital nodes
+        "fallback": "earth",           # Fall back to Earth if needed
+        "region_affinity": "europe",   # Prefer nodes with Europe visibility
+        "max_hops": 2                  # Max ISL hops
+    },
+    constraints={
+        "latency_sla_ms": 100,
+        "energy_budget_wh": 0.5
+    }
+)
+
+print(f"Placed on: {job.node}")
+print(f"Reason: {job.placement_reason}")
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const job = await client.runtime.submit({
+  model: 'llama-70b',
+  prompt: '...',
+  placement: {
+    prefer: 'orbital',
+    fallback: 'earth',
+    regionAffinity: 'europe',
+    maxHops: 2
+  },
+  constraints: {
+    latencySlams: 100,
+    energyBudgetWh: 0.5
+  }
+});
+```
+
+```bash cURL
+curl -X POST https://api.rotastellar.com/v1/runtime/jobs \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama-70b",
+    "prompt": "...",
+    "placement": {
+      "prefer": "orbital",
+      "fallback": "earth",
+      "region_affinity": "europe",
+      "max_hops": 2
+    },
+    "constraints": {
+      "latency_sla_ms": 100,
+      "energy_budget_wh": 0.5
+    }
+  }'
+```
+</CodeGroup>
+
+### Query Node Status
+
+```python
+# Get current node availability
+nodes = client.runtime.nodes()
+
+for node in nodes:
+    print(f"{node.id}: {node.type}")
+    print(f"  Location: {node.location}")
+    print(f"  Status: {node.status}")
+    print(f"  Available power: {node.available_power_w}W")
+    print(f"  Queue depth: {node.queue_depth}")
+
+    if node.type == "orbital":
+        print(f"  In eclipse: {node.in_eclipse}")
+        print(f"  Ground contact: {node.has_ground_contact}")
+```
+
+### Schedule Future Work
+
+Schedule jobs to run at optimal times:
+
+```python
+# Schedule for optimal conditions
+scheduled_job = client.runtime.schedule(
+    model="llama-70b",
+    prompt="...",
+    schedule={
+        "window_start": "2026-01-22T00:00:00Z",
+        "window_end": "2026-01-22T12:00:00Z",
+        "optimize_for": "energy"  # or "latency", "cost"
+    }
+)
+
+print(f"Scheduled for: {scheduled_job.scheduled_time}")
+print(f"Expected node: {scheduled_job.expected_node}")
+print(f"Energy savings: {scheduled_job.energy_savings_percent}%")
+```
+
+## Placement Strategies
+
+### Orbital-First
+
+Prefer orbital nodes, fall back to Earth:
+
+```python
+job = client.runtime.submit(
+    model="...",
+    prompt="...",
+    placement={"prefer": "orbital", "fallback": "earth"}
+)
+```
+
+### Earth-First
+
+Prefer Earth, use orbital for overflow:
+
+```python
+job = client.runtime.submit(
+    model="...",
+    prompt="...",
+    placement={"prefer": "earth", "fallback": "orbital"}
+)
+```
+
+### Latency-Optimized
+
+Route to minimize latency to specific region:
+
+```python
+job = client.runtime.submit(
+    model="...",
+    prompt="...",
+    placement={
+        "optimize_for": "latency",
+        "user_location": {"lat": 51.5, "lon": -0.1}  # London
+    }
+)
+```
+
+### Energy-Optimized
+
+Route to nodes with best energy availability:
+
+```python
+job = client.runtime.submit(
+    model="...",
+    prompt="...",
+    placement={"optimize_for": "energy"}
+)
+```
+
+## Scheduling Factors
+
+The scheduler considers:
+
+| Factor | Weight | Description |
+|--------|--------|-------------|
+| Energy availability | High | Current and predicted power |
+| Latency | High | Network path to user |
+| Queue depth | Medium | Current load on node |
+| Thermal headroom | Medium | Temperature margin |
+| Eclipse status | Medium | Upcoming power constraints |
+| Ground contact | Low | Communication availability |
+
+## Node Types
+
+| Type | Location | Characteristics |
+|------|----------|-----------------|
+| `earth` | Terrestrial DC | Unlimited power, stable network |
+| `leo` | Low Earth Orbit | Variable power, intermittent ground contact |
+| `meo` | Medium Earth Orbit | Stable power, higher latency |
+| `geo` | Geostationary | Continuous visibility, 240ms+ latency |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Adaptive Runtime" icon="gauge" href="/runtime/adaptive">
+    Learn about energy-aware inference
+  </Card>
+  <Card title="Resilient Compute" icon="shield" href="/runtime/resilient">
+    Learn about fault tolerance
+  </Card>
+</CardGroup>

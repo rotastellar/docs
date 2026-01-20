@@ -1,0 +1,348 @@
+---
+title: Rust SDK
+description: "Official Rust SDK for the RotaStellar API"
+---
+
+# Rust SDK
+
+The official Rust SDK for RotaStellar, providing type-safe access to Planning, Intelligence, and Runtime APIs.
+
+<Info>
+  **Status:** Early Access — [Request API key](https://rotastellar.com/early-access/)
+</Info>
+
+## Installation
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+rotastellar = "0.1"
+tokio = { version = "1", features = ["full"] }
+```
+
+Or use cargo:
+
+```bash
+cargo add rotastellar
+cargo add tokio --features full
+```
+
+### Feature Flags
+
+```toml
+[dependencies]
+rotastellar = { version = "0.1", features = ["rustls"] }
+
+# Available features:
+# - rustls: Use rustls instead of native-tls (default)
+# - native-tls: Use native TLS
+# - blocking: Enable blocking client
+# - stream: Enable streaming support
+```
+
+## Quick Start
+
+```rust
+use rotastellar::RotaStellar;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize client
+    let client = RotaStellar::new("rs_your_api_key")?;
+
+    // Or from environment variable
+    // export ROTASTELLAR_API_KEY=rs_your_api_key
+    let client = RotaStellar::from_env()?;
+
+    // Track a satellite
+    let iss = client.intelligence().satellite("ISS").await?;
+    let pos = iss.position().await?;
+
+    println!("ISS: {}, {}", pos.lat, pos.lon);
+
+    Ok(())
+}
+```
+
+## Client Configuration
+
+```rust
+use rotastellar::{RotaStellar, Config};
+use std::time::Duration;
+
+let config = Config::builder()
+    .api_key("rs_...")
+    .base_url("https://api.rotastellar.com/v1")
+    .timeout(Duration::from_secs(30))
+    .max_retries(3)
+    .build()?;
+
+let client = RotaStellar::with_config(config)?;
+```
+
+## Planning API
+
+```rust
+use rotastellar::RotaStellar;
+use rotastellar::planning::{AnalyzeRequest, ThermalRequest, LatencyRequest, PowerRequest};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_...")?;
+
+    // Feasibility analysis
+    let feasibility = client.planning().analyze(AnalyzeRequest {
+        workload: "ai_inference".to_string(),
+        compute_tflops: 100.0,
+        storage_tb: Some(10.0),
+        bandwidth_gbps: Some(1.0),
+        ..Default::default()
+    }).await?;
+
+    println!("Recommended: {}", feasibility.recommendation);
+    println!("Orbit: {}", feasibility.orbit);
+    println!("Monthly cost: ${}", feasibility.cost_monthly);
+
+    // Thermal simulation
+    let thermal = client.planning().thermal(ThermalRequest {
+        orbit: "LEO-550".to_string(),
+        power_dissipation_w: 500.0,
+        radiator_area_m2: 2.0,
+        ..Default::default()
+    }).await?;
+
+    println!("Max temp: {}°C", thermal.max_temp_c);
+
+    // Latency simulation
+    let latency = client.planning().latency(LatencyRequest {
+        orbit: "LEO-550".to_string(),
+        ground_stations: vec!["us-west".into(), "europe".into(), "asia".into()],
+        include_isl: true,
+        ..Default::default()
+    }).await?;
+
+    println!("P50: {}ms", latency.p50_ms);
+    println!("P99: {}ms", latency.p99_ms);
+
+    // Power budgeting
+    let power = client.planning().power(PowerRequest {
+        orbit: "LEO-550".to_string(),
+        compute_load_w: 500.0,
+        duty_cycle: Some(0.8),
+        mission_life_years: Some(5),
+        ..Default::default()
+    }).await?;
+
+    println!("Solar array: {} m²", power.solar_array_m2);
+
+    Ok(())
+}
+```
+
+## Intelligence API
+
+```rust
+use rotastellar::RotaStellar;
+use chrono::{Utc, Duration};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_...")?;
+
+    // Get satellite
+    let sat = client.intelligence().satellite("STARLINK-1234").await?;
+    let pos = sat.position().await?;
+    let orbit = sat.orbit().await?;
+
+    println!("Position: {}, {}", pos.lat, pos.lon);
+    println!("Altitude: {} km", pos.altitude_km);
+    println!("Period: {} minutes", orbit.period_min);
+
+    // List satellites
+    let starlinks = client.intelligence().satellites()
+        .constellation("Starlink")
+        .limit(100)
+        .send()
+        .await?;
+
+    for s in starlinks {
+        println!("{}", s.name);
+    }
+
+    // Trajectory
+    let trajectory = sat.trajectory()
+        .start(Utc::now())
+        .end(Utc::now() + Duration::hours(24))
+        .interval_sec(300)
+        .send()
+        .await?;
+
+    for point in trajectory.points {
+        println!("{}: {}, {}", point.timestamp, point.lat, point.lon);
+    }
+
+    // Conjunction analysis
+    let conjunctions = client.intelligence().conjunctions()
+        .satellite("STARLINK-1234")
+        .threshold_km(1.0)
+        .days_ahead(7)
+        .send()
+        .await?;
+
+    for conj in conjunctions {
+        println!("TCA: {}, Miss: {}km, Pc: {:.2e}",
+            conj.tca, conj.miss_km, conj.probability);
+    }
+
+    // Pattern detection
+    let patterns = client.intelligence().patterns()
+        .satellite("COSMOS-2542")
+        .lookback_days(30)
+        .send()
+        .await?;
+
+    for pattern in patterns {
+        println!("{}: {}", pattern.pattern_type, pattern.description);
+    }
+
+    Ok(())
+}
+```
+
+## Runtime API (Coming Q2 2026)
+
+```rust
+use rotastellar::RotaStellar;
+use rotastellar::runtime::{JobRequest, Constraints, Quality};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_...")?;
+
+    // Submit job
+    let job = client.runtime().submit(JobRequest {
+        model: "llama-70b".to_string(),
+        prompt: "...".to_string(),
+        constraints: Constraints {
+            latency_sla_ms: Some(200),
+            energy_budget_wh: Some(0.5),
+            quality: Quality::BestEffort,
+        },
+        ..Default::default()
+    }).await?;
+
+    println!("Job ID: {}", job.id);
+    println!("Routed to: {}", job.node);
+
+    // Get result
+    let result = job.result(30).await?;
+    println!("Response: {}", result.text);
+    println!("Adaptations: {:?}", result.adaptations);
+
+    Ok(())
+}
+```
+
+## Error Handling
+
+```rust
+use rotastellar::RotaStellar;
+use rotastellar::error::{Error, ApiError};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_...")?;
+
+    match client.intelligence().satellite("INVALID-ID").await {
+        Ok(sat) => println!("Found: {}", sat.name),
+        Err(Error::NotFound(msg)) => println!("Not found: {}", msg),
+        Err(Error::RateLimit { retry_after }) => {
+            println!("Rate limited. Retry after {}s", retry_after);
+        }
+        Err(Error::Authentication(msg)) => println!("Auth error: {}", msg),
+        Err(Error::Validation(msg)) => println!("Invalid request: {}", msg),
+        Err(Error::Api(ApiError { code, message })) => {
+            println!("API error {}: {}", code, message);
+        }
+        Err(e) => println!("Other error: {}", e),
+    }
+
+    Ok(())
+}
+```
+
+## Blocking Client
+
+For non-async contexts:
+
+```rust
+use rotastellar::blocking::RotaStellar;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_...")?;
+
+    let iss = client.intelligence().satellite("ISS")?;
+    let pos = iss.position()?;
+
+    println!("ISS: {}, {}", pos.lat, pos.lon);
+
+    Ok(())
+}
+```
+
+## Streaming
+
+For real-time updates:
+
+```rust
+use rotastellar::RotaStellar;
+use futures::StreamExt;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_...")?;
+
+    // Stream conjunction updates
+    let mut stream = client.intelligence().conjunctions()
+        .satellite("STARLINK-1234")
+        .threshold_km(5.0)
+        .stream()
+        .await?;
+
+    while let Some(update) = stream.next().await {
+        let conj = update?;
+        println!("New conjunction: {}, Miss: {}km", conj.tca, conj.miss_km);
+    }
+
+    Ok(())
+}
+```
+
+## Type Definitions
+
+All types are fully documented:
+
+```rust
+use rotastellar::types::{Position, Orbit, Satellite, Conjunction};
+
+let pos: Position = sat.position().await?;
+
+// All fields are strongly typed
+let lat: f64 = pos.lat;
+let lon: f64 = pos.lon;
+let altitude_km: f64 = pos.altitude_km;
+let velocity_km_s: f64 = pos.velocity_km_s;
+let timestamp: chrono::DateTime<chrono::Utc> = pos.timestamp;
+```
+
+## Source Code
+
+<CardGroup cols={2}>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/rotastellar/rotastellar-rust">
+    View source, report issues, and contribute.
+  </Card>
+  <Card title="crates.io" icon="rust" href="https://crates.io/crates/rotastellar">
+    Package page and version history.
+  </Card>
+</CardGroup>

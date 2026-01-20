@@ -1,0 +1,323 @@
+---
+title: Conjunction Analysis
+description: "Collision probability and avoidance recommendations"
+---
+
+# Conjunction Analysis
+
+Analyze potential collisions between space objects and receive recommendations for avoidance maneuvers.
+
+<Info>
+  **Status:** Early Access — [Request API key](https://rotastellar.com/early-access/)
+</Info>
+
+## Overview
+
+Conjunction analysis evaluates:
+
+- **Time of Closest Approach (TCA)** — When objects will be nearest
+- **Miss Distance** — Predicted separation at TCA
+- **Collision Probability** — Statistical likelihood of collision
+- **Avoidance Options** — Maneuver recommendations if needed
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellar
+
+client = RotaStellar(api_key="rs_...")
+
+# Get conjunctions for a satellite
+conjunctions = client.intelligence.conjunctions(
+    satellite="STARLINK-1234",
+    threshold_km=5.0,
+    days_ahead=7
+)
+
+for conj in conjunctions:
+    print(f"TCA: {conj.tca}")
+    print(f"Secondary: {conj.secondary.name}")
+    print(f"Miss distance: {conj.miss_km} km")
+    print(f"Probability: {conj.probability:.2e}")
+    print(f"Risk level: {conj.risk_level}")
+    print()
+```
+
+```typescript Node.js
+import { RotaStellar } from '@rotastellar/sdk';
+
+const client = new RotaStellar({ apiKey: 'rs_...' });
+
+const conjunctions = await client.intelligence.conjunctions({
+  satellite: 'STARLINK-1234',
+  thresholdKm: 5.0,
+  daysAhead: 7
+});
+
+for (const conj of conjunctions) {
+  console.log(`TCA: ${conj.tca}`);
+  console.log(`Miss: ${conj.missKm} km`);
+  console.log(`Probability: ${conj.probability}`);
+}
+```
+
+```rust Rust
+use rotastellar::RotaStellar;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = RotaStellar::new("rs_...")?;
+
+    let conjunctions = client.intelligence().conjunctions(
+        "STARLINK-1234",
+        5.0,  // threshold_km
+        7     // days_ahead
+    ).await?;
+
+    for conj in conjunctions {
+        println!("TCA: {}, Miss: {} km", conj.tca, conj.miss_km);
+    }
+
+    Ok(())
+}
+```
+
+```bash cURL
+curl "https://api.rotastellar.com/v1/conjunctions?satellite=STARLINK-1234&threshold_km=5&days_ahead=7" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+</CodeGroup>
+
+## Get Conjunctions
+
+```
+GET /v1/conjunctions
+```
+
+<ParamField query="satellite" type="string" required>
+  Primary satellite (NORAD ID or name)
+</ParamField>
+
+<ParamField query="threshold_km" type="number" default="5.0">
+  Maximum miss distance to report (km)
+</ParamField>
+
+<ParamField query="days_ahead" type="integer" default="7">
+  Prediction window (1-14 days)
+</ParamField>
+
+<ParamField query="min_probability" type="number">
+  Minimum collision probability to report (e.g., 1e-6)
+</ParamField>
+
+### Response
+
+```json
+{
+  "conjunctions": [
+    {
+      "id": "conj_abc123",
+      "tca": "2026-01-23T14:32:15Z",
+      "primary": {
+        "id": "12345",
+        "name": "STARLINK-1234",
+        "operator": "SpaceX"
+      },
+      "secondary": {
+        "id": "45678",
+        "name": "COSMOS 2251 DEB",
+        "type": "DEBRIS"
+      },
+      "miss_km": 0.45,
+      "probability": 2.3e-5,
+      "risk_level": "HIGH",
+      "relative_velocity_km_s": 14.2,
+      "geometry": {
+        "radial_km": 0.12,
+        "in_track_km": 0.38,
+        "cross_track_km": 0.18
+      },
+      "covariance_available": true,
+      "data_quality": "GOOD"
+    }
+  ],
+  "screening_window": {
+    "start": "2026-01-21T00:00:00Z",
+    "end": "2026-01-28T00:00:00Z"
+  },
+  "total_count": 12
+}
+```
+
+## Risk Levels
+
+| Level | Probability Range | Recommended Action |
+|-------|-------------------|-------------------|
+| `LOW` | < 1e-5 | Monitor |
+| `MEDIUM` | 1e-5 to 1e-4 | Review, consider maneuver |
+| `HIGH` | 1e-4 to 1e-3 | Plan maneuver |
+| `CRITICAL` | > 1e-3 | Execute maneuver |
+
+## Conjunction Details
+
+Get detailed information about a specific conjunction:
+
+```
+GET /v1/conjunctions/{conjunction_id}
+```
+
+<CodeGroup>
+```python Python
+conj = client.intelligence.conjunction("conj_abc123")
+
+print(f"TCA: {conj.tca}")
+print(f"Miss: {conj.miss_km} km")
+print(f"Radial: {conj.geometry.radial_km} km")
+print(f"In-track: {conj.geometry.in_track_km} km")
+print(f"Cross-track: {conj.geometry.cross_track_km} km")
+
+# Get avoidance options
+if conj.risk_level in ["HIGH", "CRITICAL"]:
+    options = conj.avoidance_options()
+    for opt in options:
+        print(f"Maneuver: {opt.delta_v_m_s} m/s at {opt.burn_time}")
+        print(f"New miss distance: {opt.resulting_miss_km} km")
+```
+
+```bash cURL
+curl https://api.rotastellar.com/v1/conjunctions/conj_abc123 \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+</CodeGroup>
+
+### Detailed Response
+
+```json
+{
+  "id": "conj_abc123",
+  "tca": "2026-01-23T14:32:15Z",
+  "miss_km": 0.45,
+  "probability": 2.3e-5,
+  "risk_level": "HIGH",
+  "primary": {
+    "id": "12345",
+    "name": "STARLINK-1234",
+    "position_at_tca": {
+      "lat": 45.2,
+      "lon": -122.5,
+      "altitude_km": 550
+    }
+  },
+  "secondary": {
+    "id": "45678",
+    "name": "COSMOS 2251 DEB",
+    "position_at_tca": {
+      "lat": 45.3,
+      "lon": -122.4,
+      "altitude_km": 550.3
+    }
+  },
+  "geometry": {
+    "radial_km": 0.12,
+    "in_track_km": 0.38,
+    "cross_track_km": 0.18
+  },
+  "covariance": {
+    "primary_sigma_r_km": 0.05,
+    "primary_sigma_t_km": 0.15,
+    "primary_sigma_n_km": 0.02,
+    "secondary_sigma_r_km": 0.50,
+    "secondary_sigma_t_km": 1.50,
+    "secondary_sigma_n_km": 0.30
+  },
+  "avoidance_options": [
+    {
+      "type": "in_track",
+      "delta_v_m_s": 0.5,
+      "burn_time": "2026-01-23T10:00:00Z",
+      "resulting_miss_km": 5.2,
+      "fuel_cost_kg": 0.02
+    },
+    {
+      "type": "radial",
+      "delta_v_m_s": 0.3,
+      "burn_time": "2026-01-23T08:00:00Z",
+      "resulting_miss_km": 3.8,
+      "fuel_cost_kg": 0.012
+    }
+  ],
+  "updates": [
+    {
+      "timestamp": "2026-01-21T12:00:00Z",
+      "miss_km": 0.52,
+      "probability": 1.8e-5
+    },
+    {
+      "timestamp": "2026-01-22T00:00:00Z",
+      "miss_km": 0.45,
+      "probability": 2.3e-5
+    }
+  ]
+}
+```
+
+## Monitoring Conjunctions
+
+Set up continuous monitoring for your satellites:
+
+<CodeGroup>
+```python Python
+# Create a watch for conjunction alerts
+watch = client.intelligence.conjunctions.watch(
+    satellites=["SAT-001", "SAT-002", "SAT-003"],
+    threshold_km=5.0,
+    min_probability=1e-6,
+    webhook_url="https://your-app.com/conjunction-alerts"
+)
+
+print(f"Watch ID: {watch.id}")
+print(f"Status: {watch.status}")
+```
+
+```bash cURL
+curl -X POST https://api.rotastellar.com/v1/conjunctions/watch \
+  -H "Authorization: Bearer rs_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "satellites": ["SAT-001", "SAT-002", "SAT-003"],
+    "threshold_km": 5.0,
+    "min_probability": 1e-6,
+    "webhook_url": "https://your-app.com/conjunction-alerts"
+  }'
+```
+</CodeGroup>
+
+## Fleet Screening
+
+Screen multiple satellites at once:
+
+```python
+# Screen entire constellation
+results = client.intelligence.conjunctions.screen(
+    satellites=["SAT-001", "SAT-002", "SAT-003", "SAT-004"],
+    threshold_km=5.0,
+    days_ahead=7
+)
+
+for sat_id, conjunctions in results.items():
+    print(f"\n{sat_id}: {len(conjunctions)} conjunctions")
+    for conj in conjunctions:
+        print(f"  - {conj.secondary.name}: {conj.miss_km}km ({conj.risk_level})")
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Pattern Detection" icon="chart-line" href="/intelligence/patterns">
+    Detect anomalies and maneuvers
+  </Card>
+  <Card title="Webhooks" icon="bell" href="/intelligence/webhooks">
+    Set up real-time alerts
+  </Card>
+</CardGroup>
