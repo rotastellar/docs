@@ -42,28 +42,27 @@ The Orbital Runtime is built from first principles for these constraints.
 
 ## Architecture Preview
 
-```
-┌─────────────────────────────────────────────────────┐
-│                 Your Application                     │
-└─────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────┐
-│              RotaStellar Orbital Runtime             │
-├─────────────────────────────────────────────────────┤
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │
-│  │   Orbit     │ │  Adaptive   │ │  Resilient  │   │
-│  │  Scheduler  │ │   Runtime   │ │   Compute   │   │
-│  └─────────────┘ └─────────────┘ └─────────────┘   │
-└─────────────────────────────────────────────────────┘
-                          │
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
-    ┌──────────┐   ┌──────────┐   ┌──────────┐
-    │  Earth   │   │  LEO     │   │  GEO     │
-    │  DC      │   │  Node    │   │  Node    │
-    └──────────┘   └──────────┘   └──────────┘
-```
+Your application connects to the RotaStellar Orbital Runtime, which orchestrates workloads across Earth and orbital infrastructure.
+
+<CardGroup cols={3}>
+  <Card title="Orbit Scheduler" icon="calendar" href="/runtime/scheduler">
+    Routes jobs to optimal nodes based on latency, energy, and availability
+  </Card>
+  <Card title="Adaptive Runtime" icon="gauge" href="/runtime/adaptive">
+    Adjusts precision, layer execution, and context based on constraints
+  </Card>
+  <Card title="Resilient Compute" icon="shield" href="/runtime/resilient">
+    Radiation-tolerant execution with checksums and redundancy
+  </Card>
+</CardGroup>
+
+**Infrastructure Layer:**
+
+| Node Type | Location | Characteristics |
+|-----------|----------|-----------------|
+| Earth DC | Terrestrial | High bandwidth, stable power, lowest latency to users |
+| LEO Node | 400-600 km orbit | Solar powered, 25ms latency, intermittent ground contact |
+| GEO Node | 35,786 km orbit | Continuous coverage, 250ms latency, limited power |
 
 ## API Preview
 
