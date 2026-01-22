@@ -89,7 +89,7 @@ compression = CompressionConfig(
     error_feedback=True     # Accumulate compression error
 )
 # 4.2 MB gradient → 42 KB compressed
-# <0.5% accuracy loss
+# Under 0.5% accuracy loss
 ```
 
 ### Async Aggregation
@@ -178,7 +178,7 @@ client.sync(gradients, Priority::High);
 | Metric | Value |
 |--------|-------|
 | Gradient compression | 100x (4.2 MB → 42 KB) |
-| Accuracy loss | <0.5% vs uncompressed |
+| Accuracy loss | Under 0.5% vs uncompressed |
 | Sync efficiency | +45% bandwidth utilization |
 | Training overhead | +15-20% time vs centralized |
 | Energy savings | 35-45% vs terrestrial-only |
