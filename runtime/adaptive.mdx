@@ -24,37 +24,27 @@ The Adaptive Runtime dynamically adjusts inference execution to stay within ener
 
 ## How It Works
 
-```
-Input Request
-     │
-     ▼
-┌─────────────────────────────────────────┐
-│           Adaptive Runtime               │
-│                                         │
-│  ┌─────────────┐    ┌─────────────┐    │
-│  │   Energy    │    │   Thermal   │    │
-│  │   Monitor   │    │   Monitor   │    │
-│  └──────┬──────┘    └──────┬──────┘    │
-│         │                  │           │
-│         ▼                  ▼           │
-│  ┌─────────────────────────────────┐   │
-│  │      Adaptation Controller       │   │
-│  │                                 │   │
-│  │  • Precision selection         │   │
-│  │  • Layer skip decisions        │   │
-│  │  • Context window sizing       │   │
-│  │  • Batch size adjustment       │   │
-│  └─────────────────────────────────┘   │
-│                   │                    │
-│                   ▼                    │
-│  ┌─────────────────────────────────┐   │
-│  │        Inference Engine         │   │
-│  └─────────────────────────────────┘   │
-└─────────────────────────────────────────┘
-     │
-     ▼
-Output + Adaptation Report
-```
+<Steps>
+  <Step title="Input Request">
+    Your inference request arrives with energy/thermal constraints specified.
+  </Step>
+  <Step title="Monitor State">
+    **Energy Monitor** tracks battery level, solar input, and power draw. **Thermal Monitor** tracks CPU/GPU temperatures and cooling capacity.
+  </Step>
+  <Step title="Adaptation Controller">
+    Based on current constraints and monitor data, the controller makes decisions:
+    - Precision selection (FP16/INT8/INT4)
+    - Layer skip decisions
+    - Context window sizing
+    - Batch size adjustment
+  </Step>
+  <Step title="Inference Engine">
+    Executes the model with the selected adaptations applied.
+  </Step>
+  <Step title="Output + Adaptation Report">
+    Returns the response along with a detailed report of what adaptations were applied.
+  </Step>
+</Steps>
 
 ## API Preview
 

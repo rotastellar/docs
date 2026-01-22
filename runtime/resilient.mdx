@@ -25,29 +25,25 @@ In LEO, a typical compute system experiences:
 
 ## Our Approach
 
-```
-┌─────────────────────────────────────────────────────┐
-│              Resilient Compute Pipeline              │
-│                                                     │
-│  ┌──────────┐   ┌──────────┐   ┌──────────┐       │
-│  │  Input   │──▶│  Layer   │──▶│  Output  │       │
-│  │ Checksums│   │ Execution│   │ Validation│       │
-│  └──────────┘   └────┬─────┘   └──────────┘       │
-│                      │                             │
-│                      ▼                             │
-│              ┌──────────────┐                      │
-│              │   Error      │                      │
-│              │   Detection  │                      │
-│              └──────┬───────┘                      │
-│                     │                              │
-│         ┌──────────┴──────────┐                   │
-│         ▼                     ▼                   │
-│  ┌──────────────┐    ┌──────────────┐            │
-│  │   Bounded    │    │  Selective   │            │
-│  │   Error Prop │    │  Re-execute  │            │
-│  └──────────────┘    └──────────────┘            │
-└─────────────────────────────────────────────────────┘
-```
+<Steps>
+  <Step title="Input Checksums">
+    Verify integrity of model weights and input data before processing.
+  </Step>
+  <Step title="Layer Execution">
+    Execute each layer with optional redundancy for critical computations (e.g., attention).
+  </Step>
+  <Step title="Error Detection">
+    Compare checksums and redundant outputs to detect bit flips or corruption.
+  </Step>
+  <Step title="Recovery">
+    When errors are detected, the system either:
+    - **Bounded Error Propagation** - Contains errors to prevent cascading through layers
+    - **Selective Re-execution** - Re-runs only the affected computation
+  </Step>
+  <Step title="Output Validation">
+    Final validation ensures output integrity before returning results.
+  </Step>
+</Steps>
 
 ## Key Capabilities
 
