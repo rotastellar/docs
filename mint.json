@@ -91,6 +91,16 @@
       ]
     },
     {
+      "group": "Distributed Compute",
+      "pages": [
+        "distributed/overview",
+        "distributed/federated-learning",
+        "distributed/model-partitioning",
+        "distributed/sync-scheduler",
+        "distributed/space-mesh"
+      ]
+    },
+    {
       "group": "SDKs",
       "pages": [
         "sdks/python",

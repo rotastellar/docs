@@ -1,0 +1,346 @@
+---
+title: Federated Learning
+description: "Train models across Earth and orbital nodes with gradient compression"
+---
+
+# Federated Learning
+
+<Warning>
+  **Coming Q1 2026** — This feature is in development.
+  [Request early access](https://rotastellar.com/early-access/) to be notified when available.
+</Warning>
+
+## Overview
+
+Train machine learning models across distributed Earth and orbital infrastructure. Each node trains locally on its data, then synchronizes compressed gradients during ground station passes.
+
+## Key Components
+
+<CardGroup cols={2}>
+  <Card title="FederatedClient" icon="laptop">
+    Local training client for Earth or orbital nodes
+  </Card>
+  <Card title="GradientAggregator" icon="server">
+    Central coordinator for gradient synchronization
+  </Card>
+  <Card title="CompressionConfig" icon="compress">
+    Gradient compression settings (TopK + quantization)
+  </Card>
+  <Card title="Error Feedback" icon="rotate">
+    Lossless compression via error accumulation
+  </Card>
+</CardGroup>
+
+## Gradient Compression
+
+Bandwidth between orbital and ground nodes is extremely limited. Raw gradient synchronization is infeasible for large models. Our compression pipeline achieves 100x reduction with minimal accuracy loss:
+
+### Compression Pipeline
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Original Gradients                        │
+│                    ∇ = [0.12, -0.08, 0.003, ...]            │
+│                         4.2 MB                               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              TopK Sparsification (k=1%)                      │
+│         Keep only top 1% gradients by magnitude              │
+│                         42 KB                                │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              8-bit Stochastic Quantization                   │
+│              Float32 → Int8 with scale factor                │
+│                         10.5 KB                              │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Error Feedback                             │
+│         Accumulate dropped gradients for next round          │
+│              Guarantees eventual convergence                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Configuration
+
+<CodeGroup>
+```python Python
+from rotastellar_distributed import CompressionConfig
+
+# Standard compression (100x reduction)
+compression = CompressionConfig(
+    method="topk_quantized",
+    k_ratio=0.01,           # Keep top 1%
+    quantization_bits=8,    # 8-bit quantization
+    error_feedback=True     # Accumulate errors
+)
+
+# Aggressive compression (200x reduction)
+aggressive = CompressionConfig(
+    method="topk_quantized",
+    k_ratio=0.005,          # Keep top 0.5%
+    quantization_bits=4,    # 4-bit quantization
+    error_feedback=True
+)
+
+# Light compression (10x reduction)
+light = CompressionConfig(
+    method="topk",
+    k_ratio=0.1,            # Keep top 10%
+    error_feedback=True
+)
+```
+
+```typescript Node.js
+import { CompressionConfig } from '@rotastellar/distributed';
+
+const compression = new CompressionConfig({
+  method: 'topk_quantized',
+  kRatio: 0.01,
+  quantizationBits: 8,
+  errorFeedback: true
+});
+```
+
+```rust Rust
+use rotastellar_distributed::{CompressionConfig, CompressionMethod};
+
+let compression = CompressionConfig::new()
+    .method(CompressionMethod::TopKQuantized)
+    .k_ratio(0.01)
+    .quantization_bits(8)
+    .error_feedback(true);
+```
+</CodeGroup>
+
+## Federated Client
+
+The `FederatedClient` runs on each participating node (Earth or orbital):
+
+<CodeGroup>
+```python Python
+from rotastellar_distributed import FederatedClient, CompressionConfig
+
+# Initialize client
+client = FederatedClient(
+    api_key="rs_...",
+    node_id="orbital-3",
+    node_type="orbital",        # "orbital" or "ground"
+    compression=CompressionConfig(
+        method="topk_quantized",
+        k_ratio=0.01,
+        quantization_bits=8
+    )
+)
+
+# Training loop
+for epoch in range(num_epochs):
+    for batch in dataloader:
+        # Local forward/backward pass
+        gradients = client.train_step(model, batch)
+
+        # Compress gradients
+        compressed = client.compress(gradients)
+
+        # Queue for sync (happens during ground pass)
+        client.queue_sync(compressed, priority="normal")
+
+# Force sync during ground station pass
+client.sync_now()
+
+# Get updated global model
+global_weights = client.get_global_model()
+model.load_state_dict(global_weights)
+```
+
+```typescript Node.js
+import { FederatedClient, CompressionConfig } from '@rotastellar/distributed';
+
+const client = new FederatedClient({
+  apiKey: 'rs_...',
+  nodeId: 'orbital-3',
+  nodeType: 'orbital',
+  compression: new CompressionConfig({
+    method: 'topk_quantized',
+    kRatio: 0.01,
+    quantizationBits: 8
+  })
+});
+
+// Training loop
+for (const batch of dataloader) {
+  const gradients = client.trainStep(model, batch);
+  const compressed = client.compress(gradients);
+  client.queueSync(compressed, { priority: 'normal' });
+}
+
+await client.syncNow();
+const globalWeights = await client.getGlobalModel();
+```
+
+```rust Rust
+use rotastellar_distributed::{FederatedClient, CompressionConfig, Priority};
+
+let client = FederatedClient::new("orbital-3", compression);
+
+for batch in dataloader {
+    let gradients = client.train_step(&model, &batch);
+    let compressed = client.compress(&gradients);
+    client.queue_sync(compressed, Priority::Normal);
+}
+
+client.sync_now().await?;
+let global_weights = client.get_global_model().await?;
+```
+</CodeGroup>
+
+## Gradient Aggregator
+
+The `GradientAggregator` runs on a ground station or cloud, coordinating updates from all nodes:
+
+<CodeGroup>
+```python Python
+from rotastellar_distributed import GradientAggregator
+
+# Initialize aggregator
+aggregator = GradientAggregator(
+    api_key="rs_...",
+    strategy="async_fedavg",    # Async Federated Averaging
+    min_nodes=3,                # Wait for at least 3 nodes
+    staleness_limit=5           # Accept updates up to 5 rounds old
+)
+
+# Register callback for incoming gradients
+@aggregator.on_gradient_received
+def handle_gradient(node_id, gradients, metadata):
+    print(f"Received from {node_id}: {metadata['compression_ratio']}x compressed")
+
+# Start aggregation loop
+aggregator.start()
+
+# Periodically get global model update
+while training:
+    if aggregator.has_new_update():
+        global_update = aggregator.get_update()
+        broadcast_to_nodes(global_update)
+```
+
+```typescript Node.js
+import { GradientAggregator } from '@rotastellar/distributed';
+
+const aggregator = new GradientAggregator({
+  apiKey: 'rs_...',
+  strategy: 'async_fedavg',
+  minNodes: 3,
+  stalenessLimit: 5
+});
+
+aggregator.onGradientReceived((nodeId, gradients, metadata) => {
+  console.log(`Received from ${nodeId}`);
+});
+
+aggregator.start();
+
+// Get updates
+const globalUpdate = await aggregator.getUpdate();
+```
+</CodeGroup>
+
+## Aggregation Strategies
+
+| Strategy | Description | Best For |
+|----------|-------------|----------|
+| `sync_fedavg` | Wait for all nodes before aggregating | Reliable connectivity |
+| `async_fedavg` | Aggregate as updates arrive | Intermittent connectivity |
+| `weighted_fedavg` | Weight by dataset size | Heterogeneous data |
+| `momentum_fedavg` | Add momentum to updates | Faster convergence |
+
+## Handling Connectivity
+
+Orbital nodes experience intermittent connectivity. The client handles this automatically:
+
+```python
+# Client automatically:
+# 1. Buffers gradients during no-contact periods
+# 2. Syncs when ground station pass begins
+# 3. Prioritizes critical updates
+# 4. Resumes interrupted transfers
+
+client = FederatedClient(
+    api_key="rs_...",
+    node_id="orbital-3",
+    connectivity={
+        "buffer_size_mb": 500,      # Local gradient buffer
+        "auto_sync": True,          # Sync on pass detection
+        "resume_partial": True,     # Resume interrupted transfers
+        "priority_queue": True      # Priority-based queuing
+    }
+)
+```
+
+## Convergence Guarantees
+
+Despite compression and async updates, training converges to the same solution as centralized training:
+
+| Property | Guarantee |
+|----------|-----------|
+| Compression loss | <0.5% final accuracy vs uncompressed |
+| Staleness impact | <1% accuracy loss with staleness_limit=10 |
+| Error feedback | Mathematically lossless over time |
+| Convergence rate | 1.2-1.5x more rounds than centralized |
+
+## Example: Training LLaMA-70B
+
+```python
+from rotastellar_distributed import FederatedClient, CompressionConfig, Topology
+
+# Define topology
+topology = Topology(
+    ground_nodes=["ground-us-east", "ground-eu-west", "ground-asia"],
+    orbital_nodes=["orbital-1", "orbital-2", "orbital-3", "orbital-4", "orbital-5"],
+    aggregator="ground-us-east"
+)
+
+# Configure for LLaMA-70B
+compression = CompressionConfig(
+    method="topk_quantized",
+    k_ratio=0.01,
+    quantization_bits=8,
+    error_feedback=True
+)
+
+# Each node trains on local data shard
+client = FederatedClient(
+    api_key="rs_...",
+    node_id="orbital-3",
+    topology=topology,
+    compression=compression,
+    model_config={
+        "name": "llama-70b",
+        "gradient_checkpointing": True,
+        "mixed_precision": "bf16"
+    }
+)
+
+# Training metrics
+# - 8 nodes total (3 ground + 5 orbital)
+# - 100x gradient compression
+# - ~40% energy savings vs all-terrestrial
+# - +18% training time vs centralized
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Model Partitioning" icon="scissors" href="/distributed/model-partitioning">
+    Split models across nodes for inference
+  </Card>
+  <Card title="Sync Scheduler" icon="clock" href="/distributed/sync-scheduler">
+    Optimize ground station pass utilization
+  </Card>
+</CardGroup>

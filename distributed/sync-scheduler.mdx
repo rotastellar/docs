@@ -1,0 +1,352 @@
+---
+title: Sync Scheduler
+description: "Ground station pass planning and priority-based queuing"
+---
+
+# Sync Scheduler
+
+<Warning>
+  **Coming Q1 2026** — This feature is in development.
+  [Request early access](https://rotastellar.com/early-access/) to be notified when available.
+</Warning>
+
+## Overview
+
+Orbital nodes can only sync with ground during ground station passes. The Sync Scheduler optimizes data transfer across these limited windows, ensuring critical updates are prioritized and bandwidth is fully utilized.
+
+## Key Components
+
+<CardGroup cols={2}>
+  <Card title="SyncScheduler" icon="calendar-days">
+    Main scheduler for pass planning
+  </Card>
+  <Card title="GroundStation" icon="tower-broadcast">
+    Ground station configuration
+  </Card>
+  <Card title="PriorityQueue" icon="list-ol">
+    Bandwidth-aware priority queuing
+  </Card>
+  <Card title="SyncWindow" icon="clock">
+    Pass window with bandwidth estimate
+  </Card>
+</CardGroup>
+
+## The Synchronization Challenge
+
+```
+Timeline (24 hours)
+────────────────────────────────────────────────────────────────
+
+Ground Station: Svalbard (78°N)
+    ████████░░░░░░░░████████░░░░░░░░████████░░░░░░░░████████░░░░
+    Pass 1      Gap        Pass 2      Gap        Pass 3
+
+Ground Station: Singapore (1°N)
+    ░░░░████████░░░░░░░░████████░░░░░░░░████████░░░░░░░░████████
+         Pass 1      Gap        Pass 2      Gap        Pass 3
+
+Combined Coverage
+    ████████████░░░░████████████░░░░████████████░░░░████████████
+    Better coverage with multiple stations, but still gaps
+```
+
+## Ground Station Configuration
+
+<CodeGroup>
+```python Python
+from rotastellar_distributed import SyncScheduler, GroundStation
+
+# Define your ground stations
+stations = [
+    GroundStation(
+        name="svalbard",
+        lat=78.2,
+        lon=15.6,
+        bandwidth=1e9,          # 1 Gbps
+        elevation_min=10        # Minimum elevation angle
+    ),
+    GroundStation(
+        name="singapore",
+        lat=1.3,
+        lon=103.8,
+        bandwidth=500e6         # 500 Mbps
+    ),
+    GroundStation(
+        name="santiago",
+        lat=-33.4,
+        lon=-70.6,
+        bandwidth=500e6
+    )
+]
+
+# Initialize scheduler
+scheduler = SyncScheduler(
+    api_key="rs_...",
+    ground_stations=stations,
+    orbital_nodes=["orbital-1", "orbital-2", "orbital-3"]
+)
+```
+
+```typescript Node.js
+import { SyncScheduler, GroundStation } from '@rotastellar/distributed';
+
+const stations = [
+  new GroundStation('svalbard', { lat: 78.2, lon: 15.6, bandwidth: 1e9 }),
+  new GroundStation('singapore', { lat: 1.3, lon: 103.8, bandwidth: 500e6 }),
+  new GroundStation('santiago', { lat: -33.4, lon: -70.6, bandwidth: 500e6 })
+];
+
+const scheduler = new SyncScheduler({
+  apiKey: 'rs_...',
+  groundStations: stations,
+  orbitalNodes: ['orbital-1', 'orbital-2', 'orbital-3']
+});
+```
+
+```rust Rust
+use rotastellar_distributed::{SyncScheduler, GroundStation};
+
+let stations = vec![
+    GroundStation::new("svalbard", 78.2, 15.6).bandwidth(1e9),
+    GroundStation::new("singapore", 1.3, 103.8).bandwidth(500e6),
+    GroundStation::new("santiago", -33.4, -70.6).bandwidth(500e6),
+];
+
+let scheduler = SyncScheduler::new()
+    .ground_stations(stations)
+    .orbital_nodes(vec!["orbital-1", "orbital-2", "orbital-3"]);
+```
+</CodeGroup>
+
+## Getting Sync Windows
+
+Query upcoming sync opportunities:
+
+<CodeGroup>
+```python Python
+from datetime import datetime, timedelta
+
+# Get next 24 hours of sync windows
+windows = scheduler.get_windows(hours=24)
+
+for window in windows:
+    print(f"Node: {window.orbital_node}")
+    print(f"Station: {window.ground_station}")
+    print(f"Start: {window.start}")
+    print(f"Duration: {window.duration_seconds}s")
+    print(f"Max elevation: {window.max_elevation}°")
+    print(f"Bandwidth: {window.bandwidth / 1e6:.0f} Mbps")
+    print(f"Capacity: {window.capacity_mb:.0f} MB")
+    print()
+
+# Filter for specific node
+orbital_1_windows = scheduler.get_windows(
+    hours=24,
+    node="orbital-1"
+)
+
+# Filter for specific station
+svalbard_windows = scheduler.get_windows(
+    hours=24,
+    station="svalbard"
+)
+```
+
+```typescript Node.js
+const windows = await scheduler.getWindows({ hours: 24 });
+
+for (const window of windows) {
+  console.log(`${window.orbitalNode} → ${window.groundStation}`);
+  console.log(`Start: ${window.start}, Duration: ${window.durationSeconds}s`);
+  console.log(`Capacity: ${window.capacityMb} MB`);
+}
+```
+
+```rust Rust
+let windows = scheduler.get_windows(24).await?;
+
+for window in windows {
+    println!("{} → {}", window.orbital_node, window.ground_station);
+    println!("Capacity: {} MB", window.capacity_mb);
+}
+```
+</CodeGroup>
+
+## Scheduling Sync Operations
+
+Schedule data transfers with priority:
+
+<CodeGroup>
+```python Python
+from datetime import datetime, timedelta
+
+# Schedule a sync operation
+sync = scheduler.schedule_sync(
+    node="orbital-1",
+    data_size=50e6,              # 50 MB
+    priority="critical",          # "critical", "high", "normal", "low"
+    deadline=datetime.now() + timedelta(hours=2),
+    data_type="gradients"
+)
+
+print(f"Sync ID: {sync.id}")
+print(f"Scheduled window: {sync.window.start}")
+print(f"Estimated completion: {sync.estimated_completion}")
+
+# Schedule multiple operations
+syncs = scheduler.schedule_batch([
+    {"node": "orbital-1", "data_size": 50e6, "priority": "critical"},
+    {"node": "orbital-2", "data_size": 30e6, "priority": "high"},
+    {"node": "orbital-3", "data_size": 100e6, "priority": "normal"},
+])
+```
+
+```typescript Node.js
+const sync = await scheduler.scheduleSync({
+  node: 'orbital-1',
+  dataSize: 50e6,
+  priority: 'critical',
+  deadline: new Date(Date.now() + 2 * 60 * 60 * 1000)
+});
+
+console.log(`Scheduled for: ${sync.window.start}`);
+```
+</CodeGroup>
+
+## Priority Queue
+
+The scheduler maintains a priority queue for each orbital node:
+
+```python
+# View queue for a node
+queue = scheduler.get_queue("orbital-1")
+
+for item in queue.items:
+    print(f"ID: {item.id}")
+    print(f"Priority: {item.priority}")
+    print(f"Size: {item.data_size / 1e6:.1f} MB")
+    print(f"Deadline: {item.deadline}")
+    print(f"Status: {item.status}")
+    print()
+
+# Queue statistics
+print(f"Total queued: {queue.total_size / 1e6:.1f} MB")
+print(f"Critical items: {queue.critical_count}")
+print(f"Estimated clear time: {queue.estimated_clear_time}")
+```
+
+### Priority Levels
+
+| Priority | Description | Preemption |
+|----------|-------------|------------|
+| `critical` | Safety-critical or time-sensitive | Preempts all others |
+| `high` | Important updates (e.g., model weights) | Preempts normal/low |
+| `normal` | Standard sync (e.g., gradients) | No preemption |
+| `low` | Background sync (e.g., telemetry) | Fills unused capacity |
+
+## Optimization
+
+Optimize sync schedule across all nodes and stations:
+
+```python
+# Generate optimized schedule
+plan = scheduler.optimize(
+    horizon_hours=24,
+    objectives={
+        "minimize_latency": 0.5,      # Weight for latency
+        "maximize_throughput": 0.3,   # Weight for throughput
+        "balance_load": 0.2           # Weight for load balancing
+    }
+)
+
+print(f"Scheduled {len(plan.operations)} sync operations")
+print(f"Total data: {plan.total_data_mb:.0f} MB")
+print(f"Bandwidth utilization: {plan.utilization:.1%}")
+print(f"Average wait time: {plan.avg_wait_minutes:.1f} min")
+
+# View schedule
+for op in plan.operations:
+    print(f"{op.time}: {op.node} → {op.station} ({op.data_mb:.0f} MB)")
+
+# Apply the optimized schedule
+scheduler.apply(plan)
+```
+
+## Monitoring
+
+Track sync operations in real-time:
+
+```python
+# Get current sync status
+status = scheduler.get_status()
+
+print(f"Active syncs: {status.active_count}")
+print(f"Queued: {status.queued_count}")
+print(f"Completed (24h): {status.completed_24h}")
+print(f"Failed (24h): {status.failed_24h}")
+
+# Monitor specific operation
+sync_status = scheduler.get_sync_status(sync_id)
+print(f"Progress: {sync_status.progress:.1%}")
+print(f"Bytes transferred: {sync_status.bytes_transferred}")
+print(f"Current rate: {sync_status.rate_mbps:.1f} Mbps")
+
+# Set up callbacks
+@scheduler.on_sync_complete
+def handle_complete(sync):
+    print(f"Sync {sync.id} completed: {sync.data_size / 1e6:.1f} MB")
+
+@scheduler.on_sync_failed
+def handle_failed(sync, error):
+    print(f"Sync {sync.id} failed: {error}")
+    # Auto-reschedule critical syncs
+    if sync.priority == "critical":
+        scheduler.reschedule(sync.id)
+```
+
+## Example: 24-Hour Sync Plan
+
+```python
+from rotastellar_distributed import SyncScheduler, GroundStation
+
+# Setup
+scheduler = SyncScheduler(
+    api_key="rs_...",
+    ground_stations=[
+        GroundStation("svalbard", lat=78.2, lon=15.6, bandwidth=1e9),
+        GroundStation("singapore", lat=1.3, lon=103.8, bandwidth=500e6),
+        GroundStation("chile", lat=-33.4, lon=-70.6, bandwidth=500e6),
+    ],
+    orbital_nodes=["sat-1", "sat-2", "sat-3", "sat-4", "sat-5"]
+)
+
+# Queue gradient syncs for all nodes
+for i in range(1, 6):
+    scheduler.schedule_sync(
+        node=f"sat-{i}",
+        data_size=100e6,  # 100 MB gradients per node
+        priority="high",
+        data_type="gradients"
+    )
+
+# Optimize
+plan = scheduler.optimize(horizon_hours=24)
+
+# Results:
+# - 5 nodes × 100 MB = 500 MB total
+# - 12 ground passes utilized
+# - Average wait time: 45 minutes
+# - Bandwidth utilization: 78%
+# - All syncs complete within 6 hours
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Space Mesh" icon="diagram-project" href="/distributed/space-mesh">
+    Route between orbital nodes via ISL
+  </Card>
+  <Card title="Federated Learning" icon="network-wired" href="/distributed/federated-learning">
+    Train models with sync scheduler
+  </Card>
+</CardGroup>
