@@ -185,6 +185,95 @@ console.log(result.text);
 console.log(result.adaptations);
 ```
 
+## Distributed Compute API (Coming Q1 2026)
+
+The `@rotastellar/distributed` package enables Earth-space AI coordination:
+
+```bash
+npm install @rotastellar/distributed
+```
+
+### Federated Learning
+
+```typescript
+import { FederatedClient, CompressionConfig } from '@rotastellar/distributed';
+
+// Configure gradient compression (100x reduction)
+const compression = new CompressionConfig({
+  method: 'topk_quantized',
+  kRatio: 0.01,
+  quantizationBits: 8,
+  errorFeedback: true
+});
+
+// Initialize client on orbital node
+const client = new FederatedClient({
+  apiKey: 'rs_...',
+  nodeId: 'orbital-3',
+  nodeType: 'orbital',
+  compression
+});
+
+// Train locally
+const gradients = client.trainStep(model, batch);
+
+// Sync during ground pass
+await client.sync(gradients, { priority: 'high' });
+```
+
+### Model Partitioning
+
+```typescript
+import { PartitionOptimizer, ModelProfile } from '@rotastellar/distributed';
+
+// Profile your model
+const profile = ModelProfile.fromOnnx('model.onnx');
+
+// Find optimal partition
+const optimizer = new PartitionOptimizer({ apiKey: 'rs_...' });
+const partition = await optimizer.optimize({
+  model: profile,
+  topology: {
+    groundNodes: 3,
+    orbitalNodes: 5,
+    groundFlops: 100e12,
+    orbitalFlops: 20e12
+  },
+  objective: 'minimize_latency'
+});
+
+console.log(partition.groundLayers);
+console.log(partition.orbitalLayers);
+```
+
+### Sync Scheduler
+
+```typescript
+import { SyncScheduler, GroundStation } from '@rotastellar/distributed';
+
+const scheduler = new SyncScheduler({
+  apiKey: 'rs_...',
+  groundStations: [
+    new GroundStation('svalbard', { lat: 78.2, lon: 15.6, bandwidth: 1e9 }),
+    new GroundStation('singapore', { lat: 1.3, lon: 103.8, bandwidth: 500e6 })
+  ]
+});
+
+// Get sync windows
+const windows = await scheduler.getWindows({ hours: 24 });
+
+// Schedule sync
+await scheduler.scheduleSync({
+  node: 'orbital-1',
+  dataSize: 50e6,
+  priority: 'critical'
+});
+```
+
+<Info>
+  See the [Distributed Compute documentation](/distributed/overview) for full API reference.
+</Info>
+
 ## TypeScript Support
 
 Full TypeScript definitions are included:

@@ -1,0 +1,321 @@
+---
+title: Model Partitioning
+description: "Optimal layer placement across Earth and space infrastructure"
+---
+
+# Model Partitioning
+
+<Warning>
+  **Coming Q1 2026** — This feature is in development.
+  [Request early access](https://rotastellar.com/early-access/) to be notified when available.
+</Warning>
+
+## Overview
+
+Large neural networks can be split across Earth and orbital nodes to optimize for latency, bandwidth, or energy efficiency. The Model Partitioning system finds optimal cut points based on your infrastructure topology.
+
+## Key Components
+
+<CardGroup cols={2}>
+  <Card title="PartitionOptimizer" icon="wand-magic-sparkles">
+    Finds optimal model split points
+  </Card>
+  <Card title="ModelProfile" icon="chart-bar">
+    Analyzes model layer characteristics
+  </Card>
+  <Card title="LayerPlacement" icon="sitemap">
+    Specifies ground vs orbital assignment
+  </Card>
+  <Card title="LatencyEstimator" icon="gauge">
+    Predicts end-to-end inference latency
+  </Card>
+</CardGroup>
+
+## Why Partition Models?
+
+| Scenario | Benefit |
+|----------|---------|
+| Large models, limited orbital memory | Run embedding layers on ground, attention in orbit |
+| Latency-sensitive inference | Place early layers close to data source |
+| Energy optimization | Compute-heavy layers on solar-powered orbital nodes |
+| Bandwidth constraints | Minimize activation transfer between nodes |
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Input Tokens                             │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    GROUND NODE                               │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Embedding Layer (150M params)                       │    │
+│  │  Layers 0-10 (2.8B params)                          │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                    Activations (12 MB)
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   ORBITAL NODE                               │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Layers 11-60 (35B params)                          │    │
+│  │  Most compute-intensive layers                       │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                    Activations (12 MB)
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    GROUND NODE                               │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Layers 61-80 (14B params)                          │    │
+│  │  Output Head                                         │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+                         Output Tokens
+```
+
+## Model Profile
+
+First, analyze your model to understand layer characteristics:
+
+<CodeGroup>
+```python Python
+from rotastellar_distributed import ModelProfile
+
+# From PyTorch model
+profile = ModelProfile.from_pytorch(model)
+
+# From TensorFlow/Keras
+profile = ModelProfile.from_tensorflow(model)
+
+# From ONNX file
+profile = ModelProfile.from_onnx("model.onnx")
+
+# Inspect profile
+print(f"Total parameters: {profile.total_params:,}")
+print(f"Total layers: {profile.num_layers}")
+print(f"Memory footprint: {profile.memory_mb:.1f} MB")
+
+# Per-layer analysis
+for layer in profile.layers:
+    print(f"{layer.name}: {layer.params:,} params, "
+          f"{layer.flops:,} FLOPs, "
+          f"{layer.activation_size_mb:.1f} MB activations")
+```
+
+```typescript Node.js
+import { ModelProfile } from '@rotastellar/distributed';
+
+const profile = ModelProfile.fromOnnx('model.onnx');
+
+console.log(`Total parameters: ${profile.totalParams}`);
+console.log(`Total layers: ${profile.numLayers}`);
+
+for (const layer of profile.layers) {
+  console.log(`${layer.name}: ${layer.params} params`);
+}
+```
+
+```rust Rust
+use rotastellar_distributed::ModelProfile;
+
+let profile = ModelProfile::from_onnx("model.onnx")?;
+
+println!("Total parameters: {}", profile.total_params());
+println!("Total layers: {}", profile.num_layers());
+
+for layer in profile.layers() {
+    println!("{}: {} params", layer.name, layer.params);
+}
+```
+</CodeGroup>
+
+## Partition Optimizer
+
+Find optimal cut points based on your topology:
+
+<CodeGroup>
+```python Python
+from rotastellar_distributed import PartitionOptimizer, ModelProfile
+
+# Define your infrastructure
+topology = {
+    "ground_nodes": 2,
+    "orbital_nodes": 4,
+    "ground_flops": 100e12,       # 100 TFLOPS per ground node
+    "orbital_flops": 20e12,       # 20 TFLOPS per orbital node
+    "uplink_bandwidth": 100e6,    # 100 Mbps ground→orbit
+    "downlink_bandwidth": 500e6,  # 500 Mbps orbit→ground
+    "isl_bandwidth": 10e9,        # 10 Gbps inter-satellite
+    "ground_orbit_latency_ms": 25 # LEO latency
+}
+
+# Profile your model
+profile = ModelProfile.from_pytorch(model)
+
+# Find optimal partition
+optimizer = PartitionOptimizer(api_key="rs_...")
+partition = optimizer.optimize(
+    model=profile,
+    topology=topology,
+    objective="minimize_latency"  # or "minimize_bandwidth", "balance"
+)
+
+# View results
+print(f"Optimal cut points: {partition.cut_points}")
+print(f"Ground layers: {partition.ground_layers}")
+print(f"Orbital layers: {partition.orbital_layers}")
+print(f"Estimated latency: {partition.estimated_latency_ms:.1f} ms")
+print(f"Activation transfer: {partition.transfer_size_mb:.1f} MB")
+```
+
+```typescript Node.js
+import { PartitionOptimizer, ModelProfile } from '@rotastellar/distributed';
+
+const profile = ModelProfile.fromOnnx('model.onnx');
+
+const optimizer = new PartitionOptimizer({ apiKey: 'rs_...' });
+const partition = await optimizer.optimize({
+  model: profile,
+  topology: {
+    groundNodes: 2,
+    orbitalNodes: 4,
+    groundFlops: 100e12,
+    orbitalFlops: 20e12,
+    uplinkBandwidth: 100e6,
+    downlinkBandwidth: 500e6
+  },
+  objective: 'minimize_latency'
+});
+
+console.log(`Cut points: ${partition.cutPoints}`);
+console.log(`Estimated latency: ${partition.estimatedLatencyMs} ms`);
+```
+
+```rust Rust
+use rotastellar_distributed::{PartitionOptimizer, ModelProfile, Topology, Objective};
+
+let profile = ModelProfile::from_onnx("model.onnx")?;
+
+let topology = Topology::new()
+    .ground_nodes(2)
+    .orbital_nodes(4)
+    .ground_flops(100e12)
+    .orbital_flops(20e12);
+
+let optimizer = PartitionOptimizer::new();
+let partition = optimizer.optimize(&profile, &topology, Objective::MinimizeLatency)?;
+
+println!("Cut points: {:?}", partition.cut_points());
+println!("Estimated latency: {} ms", partition.estimated_latency_ms());
+```
+</CodeGroup>
+
+## Optimization Objectives
+
+| Objective | Optimizes For | Best When |
+|-----------|--------------|-----------|
+| `minimize_latency` | End-to-end inference time | Real-time applications |
+| `minimize_bandwidth` | Data transfer between nodes | Limited connectivity |
+| `minimize_energy` | Total energy consumption | Battery/solar constraints |
+| `balance` | Weighted combination | General purpose |
+
+## Layer Placement
+
+Manually specify or adjust layer placement:
+
+```python
+from rotastellar_distributed import LayerPlacement
+
+# Manual placement
+placement = LayerPlacement()
+placement.assign_ground(layers=[0, 1, 2, 3, 4])      # First 5 layers
+placement.assign_orbital(layers=range(5, 75))         # Middle layers
+placement.assign_ground(layers=[75, 76, 77, 78, 79])  # Last 5 layers
+
+# Validate placement
+validation = placement.validate(profile, topology)
+if not validation.is_valid:
+    print(f"Issues: {validation.issues}")
+
+# Or refine optimizer result
+partition = optimizer.optimize(model=profile, topology=topology)
+partition.move_layer(15, to="ground")  # Manual adjustment
+partition.recalculate()
+```
+
+## Latency Estimation
+
+Predict inference latency for a given partition:
+
+```python
+from rotastellar_distributed import LatencyEstimator
+
+estimator = LatencyEstimator(topology=topology)
+
+# Estimate for a partition
+estimate = estimator.estimate(partition)
+
+print(f"Total latency: {estimate.total_ms:.1f} ms")
+print(f"  Ground compute: {estimate.ground_compute_ms:.1f} ms")
+print(f"  Orbital compute: {estimate.orbital_compute_ms:.1f} ms")
+print(f"  Uplink transfer: {estimate.uplink_ms:.1f} ms")
+print(f"  Downlink transfer: {estimate.downlink_ms:.1f} ms")
+print(f"  Propagation: {estimate.propagation_ms:.1f} ms")
+
+# Breakdown by layer
+for layer_est in estimate.by_layer:
+    print(f"  {layer_est.name}: {layer_est.total_ms:.1f} ms on {layer_est.node}")
+```
+
+## Example: LLaMA-70B Partitioning
+
+```python
+from rotastellar_distributed import PartitionOptimizer, ModelProfile
+
+# LLaMA-70B architecture
+profile = ModelProfile.from_pytorch(llama_70b)
+# 80 transformer layers, ~70B parameters
+
+topology = {
+    "ground_nodes": 3,
+    "orbital_nodes": 5,
+    "ground_flops": 200e12,      # A100 equivalent
+    "orbital_flops": 50e12,      # Space-qualified GPU
+    "uplink_bandwidth": 200e6,
+    "downlink_bandwidth": 1e9,
+    "isl_bandwidth": 25e9
+}
+
+partition = optimizer.optimize(
+    model=profile,
+    topology=topology,
+    objective="minimize_latency"
+)
+
+# Result for LLaMA-70B:
+# - Layers 0-8: Ground (embeddings + early attention)
+# - Layers 9-72: Orbital (bulk computation)
+# - Layers 73-79 + head: Ground (final layers)
+# - Activation transfer: 24 MB per inference
+# - Estimated latency: 180 ms (vs 400 ms all-ground)
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Sync Scheduler" icon="clock" href="/distributed/sync-scheduler">
+    Schedule data transfer during ground passes
+  </Card>
+  <Card title="Space Mesh" icon="diagram-project" href="/distributed/space-mesh">
+    Route between orbital nodes via ISL
+  </Card>
+</CardGroup>

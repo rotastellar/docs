@@ -1,0 +1,199 @@
+---
+title: Distributed Compute Overview
+description: "Coordinate AI workloads across Earth and orbital infrastructure"
+---
+
+# Distributed Compute
+
+<Warning>
+  **Coming Q1 2026** — Distributed Compute is currently in development.
+  This documentation is a design preview. [Request early access](https://rotastellar.com/early-access/)
+  to be notified when it's available.
+</Warning>
+
+## Overview
+
+Distributed Compute enables AI training and inference across hybrid Earth-space infrastructure. Coordinate federated learning, partition models optimally, and synchronize through bandwidth-constrained orbital links.
+
+<CardGroup cols={2}>
+  <Card title="Federated Learning" icon="network-wired" href="/distributed/federated-learning">
+    Train models across Earth and orbital nodes with gradient compression
+  </Card>
+  <Card title="Model Partitioning" icon="scissors" href="/distributed/model-partitioning">
+    Optimal layer placement across Earth and space infrastructure
+  </Card>
+  <Card title="Sync Scheduler" icon="clock" href="/distributed/sync-scheduler">
+    Ground station pass planning and priority-based queuing
+  </Card>
+  <Card title="Space Mesh" icon="diagram-project" href="/distributed/space-mesh">
+    ISL routing for orbital node communication
+  </Card>
+</CardGroup>
+
+## Why Earth-Space Distributed Compute?
+
+Large AI models don't fit on any single node. Training and inference must span infrastructure. But space introduces unique constraints:
+
+| Challenge | Solution |
+|-----------|----------|
+| Bandwidth is scarce (limited ground passes) | 100x gradient compression with TopK + quantization |
+| Latency varies wildly (5ms to 500ms+) | Async aggregation and intelligent model partitioning |
+| Connectivity is intermittent | Priority-based sync scheduling across passes |
+| Topology is dynamic | ISL mesh routing adapts to orbital geometry |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Your Training Job                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              RotaStellar Distributed Compute                 │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐        │
+│  │  Federated   │ │    Model     │ │    Sync      │        │
+│  │  Learning    │ │ Partitioning │ │  Scheduler   │        │
+│  └──────────────┘ └──────────────┘ └──────────────┘        │
+│                                                              │
+│  ┌──────────────────────────────────────────────────┐       │
+│  │              Space Mesh (ISL Routing)             │       │
+│  └──────────────────────────────────────────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          ▼                   ▼                   ▼
+    ┌──────────┐        ┌──────────┐        ┌──────────┐
+    │  Ground  │◄──────►│  LEO     │◄──────►│  LEO     │
+    │  Node    │        │  Node 1  │  ISL   │  Node 2  │
+    └──────────┘        └──────────┘        └──────────┘
+         │                   │
+         │    Ground Pass    │
+         └───────────────────┘
+```
+
+## Key Capabilities
+
+### Gradient Compression
+
+Reduce bandwidth by 100x with minimal accuracy loss:
+
+```python
+from rotastellar_distributed import CompressionConfig
+
+compression = CompressionConfig(
+    method="topk_quantized",
+    k_ratio=0.01,           # Keep top 1% of gradients
+    quantization_bits=8,    # 8-bit quantization
+    error_feedback=True     # Accumulate compression error
+)
+# 4.2 MB gradient → 42 KB compressed
+# <0.5% accuracy loss
+```
+
+### Async Aggregation
+
+Handle intermittent connectivity with async federated averaging:
+
+- Nodes train independently during eclipse/no-contact periods
+- Gradients sync during ground station passes
+- Central aggregator handles out-of-order updates
+- Convergence guaranteed despite variable latency
+
+### Intelligent Partitioning
+
+Split models optimally across Earth and orbital nodes:
+
+- Minimize data transfer at cut points
+- Account for per-node compute capacity
+- Adapt to changing orbital geometry
+- Balance latency vs throughput
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from rotastellar_distributed import FederatedClient, CompressionConfig
+
+# Configure compression
+compression = CompressionConfig(
+    method="topk_quantized",
+    k_ratio=0.01,
+    quantization_bits=8
+)
+
+# Initialize federated client
+client = FederatedClient(
+    api_key="rs_...",
+    node_id="orbital-3",
+    node_type="orbital",
+    compression=compression
+)
+
+# Train locally
+gradients = client.train_step(model, batch)
+
+# Sync during ground pass
+client.sync(gradients, priority="high")
+```
+
+```typescript Node.js
+import { FederatedClient, CompressionConfig } from '@rotastellar/distributed';
+
+const compression = new CompressionConfig({
+  method: 'topk_quantized',
+  kRatio: 0.01,
+  quantizationBits: 8
+});
+
+const client = new FederatedClient({
+  apiKey: 'rs_...',
+  nodeId: 'orbital-3',
+  nodeType: 'orbital',
+  compression
+});
+
+const gradients = client.trainStep(model, batch);
+client.sync(gradients, { priority: 'high' });
+```
+
+```rust Rust
+use rotastellar_distributed::{FederatedClient, CompressionConfig, CompressionMethod};
+
+let compression = CompressionConfig::new()
+    .method(CompressionMethod::TopKQuantized)
+    .k_ratio(0.01)
+    .quantization_bits(8);
+
+let client = FederatedClient::new("orbital-3", compression);
+
+let gradients = client.train_step(&model, &batch);
+client.sync(gradients, Priority::High);
+```
+</CodeGroup>
+
+## Performance
+
+| Metric | Value |
+|--------|-------|
+| Gradient compression | 100x (4.2 MB → 42 KB) |
+| Accuracy loss | <0.5% vs uncompressed |
+| Sync efficiency | +45% bandwidth utilization |
+| Training overhead | +15-20% time vs centralized |
+| Energy savings | 35-45% vs terrestrial-only |
+
+## Timeline
+
+| Milestone | Target |
+|-----------|--------|
+| Design preview (this doc) | Now |
+| SDK with simulators | Q1 2026 |
+| Beta with partners | Q2 2026 |
+| General availability | Q3 2026 |
+
+## Get Notified
+
+<Card title="Request Early Access" icon="bell" href="https://rotastellar.com/early-access/">
+  Be the first to know when Distributed Compute is available.
+</Card>
