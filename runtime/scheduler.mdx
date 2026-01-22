@@ -24,29 +24,27 @@ The Orbit Scheduler orchestrates workloads across heterogeneous compute nodes sp
 
 ## Architecture
 
-```
-                    ┌─────────────────────┐
-                    │   Orbit Scheduler   │
-                    │                     │
-                    │  ┌───────────────┐  │
-                    │  │ Placement     │  │
-                    │  │ Engine        │  │
-                    │  └───────────────┘  │
-                    │  ┌───────────────┐  │
-                    │  │ Orbit Model   │  │
-                    │  └───────────────┘  │
-                    │  ┌───────────────┐  │
-                    │  │ Energy Model  │  │
-                    │  └───────────────┘  │
-                    └─────────┬───────────┘
-                              │
-        ┌─────────────────────┼─────────────────────┐
-        ▼                     ▼                     ▼
-  ┌──────────┐         ┌──────────┐         ┌──────────┐
-  │ Earth DC │         │ LEO-1    │         │ LEO-2    │
-  │ us-west  │         │ 550km    │         │ 550km    │
-  └──────────┘         └──────────┘         └──────────┘
-```
+The Orbit Scheduler uses three models to make placement decisions:
+
+<CardGroup cols={3}>
+  <Card title="Placement Engine" icon="sitemap">
+    Decides which node should handle each workload based on constraints and current state
+  </Card>
+  <Card title="Orbit Model" icon="globe">
+    Predicts satellite positions, ground contacts, and eclipse periods
+  </Card>
+  <Card title="Energy Model" icon="bolt">
+    Tracks power availability, battery state, and solar input across all nodes
+  </Card>
+</CardGroup>
+
+**Available Nodes:**
+
+| Node | Location | Characteristics |
+|------|----------|-----------------|
+| Earth DC (us-west) | Terrestrial | Always available, lowest latency to US |
+| LEO-1 | 550 km orbit | Solar-powered, intermittent ground contact |
+| LEO-2 | 550 km orbit | Solar-powered, different orbital plane |
 
 ## API Preview
 
