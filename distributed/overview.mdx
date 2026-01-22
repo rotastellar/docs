@@ -43,35 +43,19 @@ Large AI models don't fit on any single node. Training and inference must span i
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Your Training Job                         │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│              RotaStellar Distributed Compute                 │
-├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐        │
-│  │  Federated   │ │    Model     │ │    Sync      │        │
-│  │  Learning    │ │ Partitioning │ │  Scheduler   │        │
-│  └──────────────┘ └──────────────┘ └──────────────┘        │
-│                                                              │
-│  ┌──────────────────────────────────────────────────┐       │
-│  │              Space Mesh (ISL Routing)             │       │
-│  └──────────────────────────────────────────────────┘       │
-└─────────────────────────────────────────────────────────────┘
-                              │
-          ┌───────────────────┼───────────────────┐
-          ▼                   ▼                   ▼
-    ┌──────────┐        ┌──────────┐        ┌──────────┐
-    │  Ground  │◄──────►│  LEO     │◄──────►│  LEO     │
-    │  Node    │        │  Node 1  │  ISL   │  Node 2  │
-    └──────────┘        └──────────┘        └──────────┘
-         │                   │
-         │    Ground Pass    │
-         └───────────────────┘
-```
+Your training job connects to RotaStellar Distributed Compute, which coordinates workloads across ground and orbital infrastructure:
+
+<Steps>
+  <Step title="Distributed Compute Layer">
+    The core coordination layer includes **Federated Learning** (gradient compression and aggregation), **Model Partitioning** (optimal layer placement), and **Sync Scheduler** (ground pass planning).
+  </Step>
+  <Step title="Space Mesh">
+    Inter-Satellite Link (ISL) routing enables orbital nodes to communicate with each other and relay data to ground stations.
+  </Step>
+  <Step title="Infrastructure">
+    **Ground Nodes** provide high-bandwidth terrestrial compute. **LEO Nodes** run solar-powered orbital compute, connected via ISL and synchronized during ground passes.
+  </Step>
+</Steps>
 
 ## Key Capabilities
 
