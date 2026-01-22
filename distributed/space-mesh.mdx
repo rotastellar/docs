@@ -33,45 +33,47 @@ Space Mesh enables communication between orbital nodes via Inter-Satellite Links
 
 ## Why ISL Routing?
 
-Without ISL, each orbital node must wait for its own ground pass:
+Without ISL, each orbital node must wait for its own ground pass. With ISL, data can relay through neighboring satellites:
 
-```
-Without ISL (each node waits for ground contact):
-────────────────────────────────────────────────────────────────
-Sat-1: ████░░░░░░░░░░░░░░░░████░░░░░░░░░░░░░░░░████░░░░░░░░░░░░
-Sat-2: ░░░░████░░░░░░░░░░░░░░░░████░░░░░░░░░░░░░░░░████░░░░░░░░
-Sat-3: ░░░░░░░░████░░░░░░░░░░░░░░░░████░░░░░░░░░░░░░░░░████░░░░
+<Tabs>
+  <Tab title="Without ISL">
+    Each satellite waits independently for ground contact. Long gaps between sync opportunities.
 
-With ISL (route through neighbors):
-────────────────────────────────────────────────────────────────
-Sat-1: ████████████████████████████████████████████████████████
-       └──► Sat-2 ──► Sat-3 ──► Ground (via ISL relay)
+    | Satellite | Sync Pattern |
+    |-----------|--------------|
+    | Sat-1 | Sync - Wait 90min - Sync - Wait 90min |
+    | Sat-2 | Wait 30min - Sync - Wait 90min - Sync |
+    | Sat-3 | Wait 60min - Sync - Wait 90min - Sync |
+  </Tab>
+  <Tab title="With ISL">
+    Any satellite can relay through neighbors to reach ground. Continuous sync capability.
 
-All nodes can sync continuously via mesh routing!
-```
+    **Example route:** Sat-1 → Sat-2 → Sat-3 → Ground Station
+
+    All nodes can sync continuously via mesh routing.
+  </Tab>
+</Tabs>
 
 ## Mesh Topology
 
 ### Constellation Layout
 
-```
-                        ┌─────────┐
-                        │ Sat-1   │
-                        │ (LEO)   │
-                        └────┬────┘
-                    ISL 10Gbps│
-              ┌──────────────┼──────────────┐
-              │              │              │
-         ┌────▼────┐    ┌────▼────┐    ┌────▼────┐
-         │ Sat-2   │────│ Sat-3   │────│ Sat-4   │
-         │ (LEO)   │ISL │ (LEO)   │ISL │ (LEO)   │
-         └────┬────┘    └────┬────┘    └────┬────┘
-              │              │              │
-              │         ┌────▼────┐         │
-              │         │ Ground  │         │
-              └────────►│ Station │◄────────┘
-                        └─────────┘
-```
+The mesh connects orbital nodes via high-bandwidth Inter-Satellite Links (ISL):
+
+<CardGroup cols={2}>
+  <Card title="Orbital Layer" icon="satellite">
+    **Sat-1, Sat-2, Sat-3, Sat-4** in LEO orbit, connected via 10 Gbps optical ISL links
+  </Card>
+  <Card title="Ground Layer" icon="tower-broadcast">
+    Ground stations receive data from any satellite with line-of-sight
+  </Card>
+</CardGroup>
+
+| Link Type | Bandwidth | Latency |
+|-----------|-----------|---------|
+| ISL (satellite to satellite) | 10 Gbps | 3-15 ms |
+| Downlink (satellite to ground) | 1 Gbps | 5-25 ms |
+| Uplink (ground to satellite) | 100-500 Mbps | 5-25 ms |
 
 ## Basic Usage
 

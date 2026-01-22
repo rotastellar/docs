@@ -42,45 +42,27 @@ Large neural networks can be split across Earth and orbital nodes to optimize fo
 
 ## How It Works
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Input Tokens                             │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    GROUND NODE                               │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  Embedding Layer (150M params)                       │    │
-│  │  Layers 0-10 (2.8B params)                          │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                    Activations (12 MB)
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   ORBITAL NODE                               │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  Layers 11-60 (35B params)                          │    │
-│  │  Most compute-intensive layers                       │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                    Activations (12 MB)
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    GROUND NODE                               │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  Layers 61-80 (14B params)                          │    │
-│  │  Output Head                                         │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-                         Output Tokens
-```
+<Steps>
+  <Step title="Input Processing (Ground)">
+    Input tokens are received at a ground node where the **Embedding Layer** (150M params) and **Layers 0-10** (2.8B params) process the initial representation.
+  </Step>
+  <Step title="Activation Transfer (Uplink)">
+    Compressed activations (12 MB) are transmitted to the orbital node via ground-to-space link.
+  </Step>
+  <Step title="Core Computation (Orbital)">
+    **Layers 11-60** (35B params) run on the orbital node - the most compute-intensive portion of the model, powered by solar energy.
+  </Step>
+  <Step title="Activation Transfer (Downlink)">
+    Output activations (12 MB) are transmitted back to a ground node.
+  </Step>
+  <Step title="Output Generation (Ground)">
+    **Layers 61-80** (14B params) and the **Output Head** generate the final output tokens.
+  </Step>
+</Steps>
+
+<Info>
+  The partition optimizer automatically finds cut points that minimize total latency while respecting memory constraints on each node type.
+</Info>
 
 ## Model Profile
 

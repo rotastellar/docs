@@ -37,34 +37,20 @@ Bandwidth between orbital and ground nodes is extremely limited. Raw gradient sy
 
 ### Compression Pipeline
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Original Gradients                        │
-│                    ∇ = [0.12, -0.08, 0.003, ...]            │
-│                         4.2 MB                               │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│              TopK Sparsification (k=1%)                      │
-│         Keep only top 1% gradients by magnitude              │
-│                         42 KB                                │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│              8-bit Stochastic Quantization                   │
-│              Float32 → Int8 with scale factor                │
-│                         10.5 KB                              │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Error Feedback                             │
-│         Accumulate dropped gradients for next round          │
-│              Guarantees eventual convergence                 │
-└─────────────────────────────────────────────────────────────┘
-```
+<Steps>
+  <Step title="Original Gradients (4.2 MB)">
+    Raw gradient tensor from backpropagation, e.g., `∇ = [0.12, -0.08, 0.003, ...]`
+  </Step>
+  <Step title="TopK Sparsification (42 KB)">
+    Keep only top 1% of gradients by magnitude. Reduces size by 100x while preserving the most important updates.
+  </Step>
+  <Step title="8-bit Stochastic Quantization (10.5 KB)">
+    Convert Float32 to Int8 with scale factor. Further 4x reduction with minimal precision loss.
+  </Step>
+  <Step title="Error Feedback">
+    Accumulate dropped gradients for the next round. Guarantees eventual convergence despite aggressive compression.
+  </Step>
+</Steps>
 
 ### Configuration
 

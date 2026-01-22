@@ -33,22 +33,16 @@ Orbital nodes can only sync with ground during ground station passes. The Sync S
 
 ## The Synchronization Challenge
 
-```
-Timeline (24 hours)
-────────────────────────────────────────────────────────────────
+Ground station passes are intermittent - each satellite only has line-of-sight to a ground station for a portion of each orbit.
 
-Ground Station: Svalbard (78°N)
-    ████████░░░░░░░░████████░░░░░░░░████████░░░░░░░░████████░░░░
-    Pass 1      Gap        Pass 2      Gap        Pass 3
+| Ground Station | Location | Typical Pass Pattern |
+|----------------|----------|---------------------|
+| Svalbard | 78°N | 8-10 passes/day, 10-15 min each |
+| Singapore | 1°N | 4-6 passes/day, 8-12 min each |
 
-Ground Station: Singapore (1°N)
-    ░░░░████████░░░░░░░░████████░░░░░░░░████████░░░░░░░░████████
-         Pass 1      Gap        Pass 2      Gap        Pass 3
-
-Combined Coverage
-    ████████████░░░░████████████░░░░████████████░░░░████████████
-    Better coverage with multiple stations, but still gaps
-```
+<Info>
+  **Combined coverage** from multiple ground stations reduces gaps but doesn't eliminate them. The Sync Scheduler optimizes data transfer across these limited windows.
+</Info>
 
 ## Ground Station Configuration
 
