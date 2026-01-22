@@ -2,10 +2,10 @@
   "$schema": "https://mintlify.com/schema.json",
   "name": "RotaStellar API",
   "logo": {
-    "dark": "/images/logo-dark.svg",
-    "light": "/images/logo-light.svg"
+    "dark": "/images/logo-dark.png",
+    "light": "/images/logo-light.png"
   },
-  "favicon": "/images/favicon.svg",
+  "favicon": "/images/favicon.png",
   "colors": {
     "primary": "#0d9488",
     "light": "#14b8a6",
