@@ -7,6 +7,67 @@ description: "API version history and updates"
 
 All notable changes to the RotaStellar API.
 
+## 2026-02-01 — SDK Updates & Documentation Improvements
+
+### SDK Updates
+
+- **Python SDK v0.2.0** — Fixed `Position` type to use `latitude`/`longitude` fields consistently
+- **Node.js SDK v0.2.0** — Aligned field names with Python SDK (`latitude`, `longitude`, `altitudeKm`)
+- **Rust SDK v0.1.1** — Types-only release with `Position`, `Orbit`, `Satellite`, `TimeRange` structs
+
+### API Improvements
+
+- **Trajectory API** — Now accepts ISO 8601 strings for `start` and `end` parameters
+- **Patterns API** — Added `type` filter parameter for filtering by pattern type (`maneuver`, `anomaly`, `proximity`)
+- **Conjunctions API** — Response now includes `miss_distance_km` and `collision_probability` fields
+
+### Documentation
+
+- Updated all SDK examples to use correct `RotaStellarClient` class name
+- Fixed code examples across 20+ documentation pages
+- Added comprehensive error handling examples
+
+---
+
+## 2026-01-28 — Dashboard Beta & Distributed Compute Preview
+
+### New Features
+
+- **Dashboard Beta** — Web-based dashboard for satellite tracking and conjunction monitoring at [app.rotastellar.com](https://app.rotastellar.com)
+  - Real-time satellite position visualization
+  - Conjunction risk timeline
+  - API usage metrics
+
+- **Distributed Compute SDK Preview** — `rotastellar-distributed` package now available
+  - `FederatedClient` for gradient compression and federated learning
+  - `CompressionConfig` with TopK + quantization (100x compression)
+  - Python: `pip install rotastellar-distributed`
+  - Node.js: `npm install @rotastellar/distributed`
+
+### API Updates
+
+- **List Satellites** — Added `constellation` and `operator` filter parameters
+- **Get Satellite** — Response now includes `orbit` object with computed properties
+- **Rate Limits** — Increased Pro tier limits to 100 req/min
+
+---
+
+## 2026-01-24 — Intelligence API Enhancements
+
+### New Endpoints
+
+- `GET /v1/satellites/{id}/trajectory` — Get predicted positions over a time range
+- `GET /v1/patterns` — Detect maneuvers, anomalies, and proximity operations
+- `POST /v1/conjunctions/watch` — Set up webhook alerts for conjunction events
+
+### Improvements
+
+- **Conjunction Analysis** — Now includes avoidance maneuver recommendations
+- **Pattern Detection** — Added confidence scores and detailed descriptions
+- **Satellite Metadata** — Enhanced with operator, constellation, and launch date fields
+
+---
+
 ## 2026-01-21 — Early Access Launch
 
 <Note>
@@ -47,6 +108,6 @@ Breaking changes will be released as new versions with migration guides.
 
 ## Subscribe to Updates
 
-<Card title="Developer Newsletter" icon="envelope" href="https://rotastellar.com/newsletter/">
+<Card title="Developer Newsletter" icon="envelope" href="https://rotastellar.com/developers">
   Get notified about API changes and new features.
 </Card>
