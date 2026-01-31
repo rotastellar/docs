@@ -7,7 +7,7 @@ description: "Train models across Earth and orbital nodes with gradient compress
 
 <Warning>
   **Coming Q1 2026** — This feature is in development.
-  [Request early access](https://rotastellar.com/early-access/) to be notified when available.
+  [Request early access](https://rotastellar.com/developers) to be notified when available.
 </Warning>
 
 ## Overview
@@ -110,63 +110,65 @@ The `FederatedClient` runs on each participating node (Earth or orbital):
 
 <CodeGroup>
 ```python Python
-from rotastellar_distributed import FederatedClient, CompressionConfig
+from rotastellar_distributed import FederatedClient, CompressionConfig, CompressionMethod
 
 # Initialize client
 client = FederatedClient(
-    api_key="rs_...",
     node_id="orbital-3",
     node_type="orbital",        # "orbital" or "ground"
     compression=CompressionConfig(
-        method="topk_quantized",
+        method=CompressionMethod.TOP_K_QUANTIZED,
         k_ratio=0.01,
-        quantization_bits=8
+        quantization_bits=8,
+        error_feedback=True
     )
 )
 
 # Training loop
 for epoch in range(num_epochs):
     for batch in dataloader:
-        # Local forward/backward pass
-        gradients = client.train_step(model, batch)
+        # Compute local gradients
+        gradients = client.compute_gradients(model_params, batch)
 
-        # Compress gradients
+        # Compress gradients for transmission
         compressed = client.compress(gradients)
 
-        # Queue for sync (happens during ground pass)
-        client.queue_sync(compressed, priority="normal")
+        # Send to aggregator (implementation-specific)
+        send_to_aggregator(compressed)
 
-# Force sync during ground station pass
-client.sync_now()
+# Apply received global update
+client.apply_update(global_update)
 
-# Get updated global model
-global_weights = client.get_global_model()
-model.load_state_dict(global_weights)
+# Get compression statistics
+stats = client.get_stats()
+print(f"Compression ratio: {stats['compression_ratio']}x")
 ```
 
 ```typescript Node.js
-import { FederatedClient, CompressionConfig } from '@rotastellar/distributed';
+import { FederatedClient, CompressionConfig, CompressionMethod } from '@rotastellar/distributed';
+
+const compression: CompressionConfig = {
+  method: CompressionMethod.TOP_K_QUANTIZED,
+  kRatio: 0.01,
+  quantizationBits: 8,
+  errorFeedback: true
+};
 
 const client = new FederatedClient({
-  apiKey: 'rs_...',
   nodeId: 'orbital-3',
   nodeType: 'orbital',
-  compression: new CompressionConfig({
-    method: 'topk_quantized',
-    kRatio: 0.01,
-    quantizationBits: 8
-  })
+  compression
 });
 
 // Training loop
 for (const batch of dataloader) {
-  const gradients = client.trainStep(model, batch);
+  const gradients = client.computeGradients(modelParams, batch);
   const compressed = client.compress(gradients);
-  client.queueSync(compressed, { priority: 'normal' });
+  sendToAggregator(compressed);
 }
 
-await client.syncNow();
-const globalWeights = await client.getGlobalModel();
+// Apply received update
+client.applyUpdate(globalUpdate);
 ```
 
 ```rust Rust
@@ -251,21 +253,22 @@ const globalUpdate = await aggregator.getUpdate();
 Orbital nodes experience intermittent connectivity. The client handles this automatically:
 
 ```python
-# Client automatically:
-# 1. Buffers gradients during no-contact periods
-# 2. Syncs when ground station pass begins
-# 3. Prioritizes critical updates
-# 4. Resumes interrupted transfers
+# The FederatedClient handles:
+# 1. Gradient compression for bandwidth-limited links
+# 2. Error feedback for lossless compression over time
+# 3. Statistics tracking for monitoring
+
+from rotastellar_distributed import FederatedClient, CompressionConfig, CompressionMethod
 
 client = FederatedClient(
-    api_key="rs_...",
     node_id="orbital-3",
-    connectivity={
-        "buffer_size_mb": 500,      # Local gradient buffer
-        "auto_sync": True,          # Sync on pass detection
-        "resume_partial": True,     # Resume interrupted transfers
-        "priority_queue": True      # Priority-based queuing
-    }
+    node_type="orbital",
+    compression=CompressionConfig(
+        method=CompressionMethod.TOP_K_QUANTIZED,
+        k_ratio=0.01,
+        quantization_bits=8,
+        error_feedback=True  # Accumulate dropped gradients
+    )
 )
 ```
 
@@ -283,38 +286,33 @@ Despite compression and async updates, training converges to the same solution a
 ## Example: Training LLaMA-70B
 
 ```python
-from rotastellar_distributed import FederatedClient, CompressionConfig, Topology
+from rotastellar_distributed import FederatedClient, CompressionConfig, CompressionMethod
 
-# Define topology
-topology = Topology(
-    ground_nodes=["ground-us-east", "ground-eu-west", "ground-asia"],
-    orbital_nodes=["orbital-1", "orbital-2", "orbital-3", "orbital-4", "orbital-5"],
-    aggregator="ground-us-east"
-)
-
-# Configure for LLaMA-70B
+# Configure compression for LLaMA-70B gradients
 compression = CompressionConfig(
-    method="topk_quantized",
-    k_ratio=0.01,
-    quantization_bits=8,
-    error_feedback=True
+    method=CompressionMethod.TOP_K_QUANTIZED,
+    k_ratio=0.01,           # Keep top 1%
+    quantization_bits=8,    # 8-bit quantization
+    error_feedback=True     # Lossless over time
 )
 
-# Each node trains on local data shard
+# Initialize orbital node client
 client = FederatedClient(
-    api_key="rs_...",
     node_id="orbital-3",
-    topology=topology,
-    compression=compression,
-    model_config={
-        "name": "llama-70b",
-        "gradient_checkpointing": True,
-        "mixed_precision": "bf16"
-    }
+    node_type="orbital",
+    compression=compression
 )
 
-# Training metrics
-# - 8 nodes total (3 ground + 5 orbital)
+# Training loop with gradient compression
+gradients = client.compute_gradients(model_params, local_batch)
+compressed = client.compress(gradients)
+
+# Check compression stats
+stats = client.get_stats()
+print(f"Compression ratio: {stats['compression_ratio']}x")
+print(f"Total compressed: {stats['total_compressed']}")
+
+# Training metrics for 8-node setup:
 # - 100x gradient compression
 # - ~40% energy savings vs all-terrestrial
 # - +18% training time vs centralized

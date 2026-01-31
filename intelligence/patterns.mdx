@@ -24,31 +24,31 @@ Pattern detection identifies:
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 # Get detected patterns for a satellite
-patterns = client.intelligence.patterns(
-    satellite="COSMOS-2542",
+patterns = client.list_patterns(
+    satellite_id="44832",  # COSMOS-2542
     lookback_days=30
 )
 
 for pattern in patterns:
-    print(f"Type: {pattern.type}")
-    print(f"Time: {pattern.timestamp}")
-    print(f"Confidence: {pattern.confidence}")
-    print(f"Description: {pattern.description}")
+    print(f"Type: {pattern['type']}")
+    print(f"Time: {pattern['timestamp']}")
+    print(f"Confidence: {pattern['confidence']}")
+    print(f"Description: {pattern['description']}")
     print()
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
-const patterns = await client.intelligence.patterns({
-  satellite: 'COSMOS-2542',
+const patterns = await client.listPatterns({
+  satelliteId: '44832',  // COSMOS-2542
   lookbackDays: 30
 });
 
@@ -159,15 +159,15 @@ Detected orbital changes:
 
 ```python
 # Get only maneuvers
-maneuvers = client.intelligence.patterns(
-    satellite="STARLINK-1234",
+maneuvers = client.list_patterns(
+    satellite_id="STARLINK-1234",
     type="maneuver",
     lookback_days=90
 )
 
 for m in maneuvers:
-    print(f"{m.timestamp}: {m.subtype}")
-    print(f"  Delta-V: {m.details.delta_v_estimated_m_s} m/s")
+    print(f"{m['timestamp']}: {m['subtype']}")
+    print(f"  Delta-V: {m['details']['delta_v_estimated_m_s']} m/s")
 ```
 
 ### Anomalies
@@ -184,15 +184,15 @@ Unexpected behavior deviations:
 
 ```python
 # Get anomalies
-anomalies = client.intelligence.patterns(
-    satellite="DEBRIS-12345",
+anomalies = client.list_patterns(
+    satellite_id="DEBRIS-12345",
     type="anomaly",
     lookback_days=7
 )
 
 for a in anomalies:
-    if a.subtype == "fragmentation":
-        print(f"ALERT: Possible fragmentation at {a.timestamp}")
+    if a['subtype'] == "fragmentation":
+        print(f"ALERT: Possible fragmentation at {a['timestamp']}")
 ```
 
 ### Proximity Operations
@@ -201,16 +201,16 @@ Close approaches and rendezvous:
 
 ```python
 # Detect proximity operations
-proximity = client.intelligence.patterns(
-    satellite="INSPECTOR-SAT",
+proximity = client.list_patterns(
+    satellite_id="INSPECTOR-SAT",
     type="proximity",
     lookback_days=60
 )
 
 for p in proximity:
-    print(f"Approached {p.details.target}")
-    print(f"  Min distance: {p.details.min_distance_km} km")
-    print(f"  Duration: {p.details.duration_hours} hours")
+    print(f"Approached {p['details']['target']}")
+    print(f"  Min distance: {p['details']['min_distance_km']} km")
+    print(f"  Duration: {p['details']['duration_hours']} hours")
 ```
 
 ## Real-Time Anomaly Detection
@@ -219,12 +219,19 @@ Get immediate alerts for anomalies:
 
 <CodeGroup>
 ```python Python
-# Set up anomaly monitoring
-monitor = client.intelligence.patterns.monitor(
-    satellites=["CRITICAL-SAT-1", "CRITICAL-SAT-2"],
-    types=["anomaly", "proximity"],
-    min_confidence=0.8,
-    webhook_url="https://your-app.com/pattern-alerts"
+# Set up anomaly monitoring via webhook
+# See /intelligence/webhooks for full webhook setup
+import requests
+
+requests.post(
+    "https://api.rotastellar.com/v1/patterns/monitor",
+    headers={"Authorization": "Bearer rs_your_api_key"},
+    json={
+        "satellites": ["CRITICAL-SAT-1", "CRITICAL-SAT-2"],
+        "types": ["anomaly", "proximity"],
+        "min_confidence": 0.8,
+        "webhook_url": "https://your-app.com/pattern-alerts"
+    }
 )
 ```
 
@@ -247,15 +254,15 @@ Analyze long-term behavioral patterns:
 
 ```python
 # Get 1-year pattern history
-history = client.intelligence.patterns(
-    satellite="GEO-SAT-1",
+history = client.list_patterns(
+    satellite_id="GEO-SAT-1",
     lookback_days=365
 )
 
 # Analyze maneuver frequency
-maneuvers = [p for p in history if p.type == "maneuver"]
+maneuvers = [p for p in history if p['type'] == "maneuver"]
 print(f"Total maneuvers: {len(maneuvers)}")
-print(f"Station-keeping: {sum(1 for m in maneuvers if m.subtype == 'station_keeping')}")
+print(f"Station-keeping: {sum(1 for m in maneuvers if m['subtype'] == 'station_keeping')}")
 ```
 
 ## Batch Analysis
@@ -264,13 +271,15 @@ Analyze patterns across multiple satellites:
 
 ```python
 # Analyze entire constellation
-results = client.intelligence.patterns.batch(
-    satellites=["SAT-001", "SAT-002", "SAT-003"],
-    lookback_days=30
-)
+satellites = ["SAT-001", "SAT-002", "SAT-003"]
+results = {}
+
+for sat_id in satellites:
+    patterns = client.list_patterns(satellite_id=sat_id, lookback_days=30)
+    results[sat_id] = patterns
 
 for sat_id, patterns in results.items():
-    anomalies = [p for p in patterns if p.type == "anomaly"]
+    anomalies = [p for p in patterns if p['type'] == "anomaly"]
     if anomalies:
         print(f"{sat_id}: {len(anomalies)} anomalies detected")
 ```

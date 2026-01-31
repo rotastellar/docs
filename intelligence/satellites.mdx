@@ -32,54 +32,47 @@ The Satellite Tracking API provides:
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
-# Get satellite by name or NORAD ID
-iss = client.intelligence.satellite("ISS")  # or "25544"
+# Get satellite by NORAD ID
+iss = client.get_satellite("25544")  # ISS
 
 # Current position
-pos = iss.position()
-print(f"Location: {pos.lat}, {pos.lon}")
-print(f"Altitude: {pos.altitude_km} km")
-print(f"Velocity: {pos.velocity_km_s} km/s")
+print(f"Location: {iss.position.latitude}, {iss.position.longitude}")
+print(f"Altitude: {iss.position.altitude_km} km")
 
 # Orbital parameters
-orbit = iss.orbit()
-print(f"Period: {orbit.period_min} minutes")
-print(f"Inclination: {orbit.inclination_deg} deg")
+print(f"Period: {iss.orbit.orbital_period_minutes} minutes")
+print(f"Inclination: {iss.orbit.inclination_deg} deg")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 // Get satellite
-const iss = await client.intelligence.satellite('ISS');
+const iss = await client.getSatellite('25544');  // ISS
 
 // Current position
-const pos = await iss.position();
-console.log(`Location: ${pos.lat}, ${pos.lon}`);
-console.log(`Altitude: ${pos.altitudeKm} km`);
+console.log(`Location: ${iss.position?.latitude}, ${iss.position?.longitude}`);
+console.log(`Altitude: ${iss.position?.altitudeKm} km`);
 
 // Orbital parameters
-const orbit = await iss.orbit();
-console.log(`Period: ${orbit.periodMin} minutes`);
+console.log(`Period: ${iss.orbit?.periodMin} minutes`);
 ```
 
 ```rust Rust
-use rotastellar::RotaStellar;
+use rotastellar::types::{Position, Orbit};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = RotaStellar::new("rs_...")?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Rust SDK provides types only (HTTP client coming soon)
+    // Use Python or Node.js SDK for full API access
 
-    let iss = client.intelligence().satellite("ISS").await?;
-    let pos = iss.position().await?;
-
-    println!("Location: {}, {}", pos.lat, pos.lon);
+    let pos = Position::new(41.264, -95.123, 420.5)?;
+    println!("Location: {}, {}", pos.latitude, pos.longitude);
     println!("Altitude: {} km", pos.altitude_km);
 
     Ok(())
@@ -163,14 +156,13 @@ GET /v1/satellites
 
 <CodeGroup>
 ```python Python
-starlinks = client.intelligence.satellites(
+starlinks = client.list_satellites(
     constellation="Starlink",
     limit=100
 )
 
 for sat in starlinks:
-    pos = sat.position()
-    print(f"{sat.name}: {pos.altitude_km} km")
+    print(f"{sat.name}: {sat.position.altitude_km} km")
 ```
 
 ```bash cURL
@@ -198,10 +190,10 @@ GET /v1/satellites/{satellite_id}/position
 from datetime import datetime, timedelta
 
 # Where will ISS be in 2 hours?
-future = datetime.utcnow() + timedelta(hours=2)
+future = (datetime.utcnow() + timedelta(hours=2)).isoformat()
 
-pos = iss.position(at=future)
-print(f"Predicted: {pos.lat}, {pos.lon}")
+pos = client.get_satellite_position("25544", at=future)
+print(f"Predicted: {pos.latitude}, {pos.longitude}")
 ```
 
 ```bash cURL
@@ -236,14 +228,15 @@ GET /v1/satellites/{satellite_id}/trajectory
 ```python Python
 from datetime import datetime, timedelta
 
-trajectory = iss.trajectory(
-    start=datetime.utcnow(),
-    end=datetime.utcnow() + timedelta(hours=24),
+trajectory = client.get_trajectory(
+    satellite_id="25544",
+    start=datetime.utcnow().isoformat(),
+    end=(datetime.utcnow() + timedelta(hours=24)).isoformat(),
     interval_sec=300  # Every 5 minutes
 )
 
-for point in trajectory.points:
-    print(f"{point.timestamp}: {point.lat}, {point.lon}")
+for point in trajectory:
+    print(f"{point['timestamp']}: {point['lat']}, {point['lon']}")
 ```
 
 ```bash cURL

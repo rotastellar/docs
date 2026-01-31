@@ -24,63 +24,46 @@ Conjunction analysis evaluates:
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 # Get conjunctions for a satellite
-conjunctions = client.intelligence.conjunctions(
-    satellite="STARLINK-1234",
+conjunctions = client.list_conjunctions(
+    satellite_id="STARLINK-1234",
     threshold_km=5.0,
-    days_ahead=7
+    limit=10
 )
 
 for conj in conjunctions:
-    print(f"TCA: {conj.tca}")
-    print(f"Secondary: {conj.secondary.name}")
-    print(f"Miss distance: {conj.miss_km} km")
-    print(f"Probability: {conj.probability:.2e}")
-    print(f"Risk level: {conj.risk_level}")
+    print(f"TCA: {conj['tca']}")
+    print(f"Miss distance: {conj['miss_distance_km']} km")
+    print(f"Probability: {conj['collision_probability']:.2e}")
     print()
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
-const conjunctions = await client.intelligence.conjunctions({
-  satellite: 'STARLINK-1234',
+const conjunctions = await client.listConjunctions({
+  satelliteId: 'STARLINK-1234',
   thresholdKm: 5.0,
-  daysAhead: 7
+  limit: 10
 });
 
 for (const conj of conjunctions) {
   console.log(`TCA: ${conj.tca}`);
-  console.log(`Miss: ${conj.missKm} km`);
-  console.log(`Probability: ${conj.probability}`);
+  console.log(`Miss: ${conj.miss_distance_km} km`);
+  console.log(`Probability: ${conj.collision_probability}`);
 }
 ```
 
 ```rust Rust
-use rotastellar::RotaStellar;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = RotaStellar::new("rs_...")?;
-
-    let conjunctions = client.intelligence().conjunctions(
-        "STARLINK-1234",
-        5.0,  // threshold_km
-        7     // days_ahead
-    ).await?;
-
-    for conj in conjunctions {
-        println!("TCA: {}, Miss: {} km", conj.tca, conj.miss_km);
-    }
-
-    Ok(())
-}
+// Rust SDK provides types only (HTTP client coming soon)
+// Use Python or Node.js SDK for full API access
+// See /sdks/rust for available types
 ```
 
 ```bash cURL
@@ -169,20 +152,26 @@ GET /v1/conjunctions/{conjunction_id}
 
 <CodeGroup>
 ```python Python
-conj = client.intelligence.conjunction("conj_abc123")
+# Get conjunction details via REST API
+import requests
 
-print(f"TCA: {conj.tca}")
-print(f"Miss: {conj.miss_km} km")
-print(f"Radial: {conj.geometry.radial_km} km")
-print(f"In-track: {conj.geometry.in_track_km} km")
-print(f"Cross-track: {conj.geometry.cross_track_km} km")
+response = requests.get(
+    "https://api.rotastellar.com/v1/conjunctions/conj_abc123",
+    headers={"Authorization": "Bearer rs_your_api_key"}
+)
+conj = response.json()
 
-# Get avoidance options
-if conj.risk_level in ["HIGH", "CRITICAL"]:
-    options = conj.avoidance_options()
-    for opt in options:
-        print(f"Maneuver: {opt.delta_v_m_s} m/s at {opt.burn_time}")
-        print(f"New miss distance: {opt.resulting_miss_km} km")
+print(f"TCA: {conj['tca']}")
+print(f"Miss: {conj['miss_km']} km")
+print(f"Radial: {conj['geometry']['radial_km']} km")
+print(f"In-track: {conj['geometry']['in_track_km']} km")
+print(f"Cross-track: {conj['geometry']['cross_track_km']} km")
+
+# Check avoidance options
+if conj['risk_level'] in ["HIGH", "CRITICAL"]:
+    for opt in conj.get('avoidance_options', []):
+        print(f"Maneuver: {opt['delta_v_m_s']} m/s at {opt['burn_time']}")
+        print(f"New miss distance: {opt['resulting_miss_km']} km")
 ```
 
 ```bash cURL
@@ -268,16 +257,26 @@ Set up continuous monitoring for your satellites:
 
 <CodeGroup>
 ```python Python
-# Create a watch for conjunction alerts
-watch = client.intelligence.conjunctions.watch(
-    satellites=["SAT-001", "SAT-002", "SAT-003"],
-    threshold_km=5.0,
-    min_probability=1e-6,
-    webhook_url="https://your-app.com/conjunction-alerts"
-)
+# Create a watch for conjunction alerts via REST API
+import requests
 
-print(f"Watch ID: {watch.id}")
-print(f"Status: {watch.status}")
+response = requests.post(
+    "https://api.rotastellar.com/v1/conjunctions/watch",
+    headers={
+        "Authorization": "Bearer rs_your_api_key",
+        "Content-Type": "application/json"
+    },
+    json={
+        "satellites": ["SAT-001", "SAT-002", "SAT-003"],
+        "threshold_km": 5.0,
+        "min_probability": 1e-6,
+        "webhook_url": "https://your-app.com/conjunction-alerts"
+    }
+)
+watch = response.json()
+
+print(f"Watch ID: {watch['id']}")
+print(f"Status: {watch['status']}")
 ```
 
 ```bash cURL
@@ -299,16 +298,21 @@ Screen multiple satellites at once:
 
 ```python
 # Screen entire constellation
-results = client.intelligence.conjunctions.screen(
-    satellites=["SAT-001", "SAT-002", "SAT-003", "SAT-004"],
-    threshold_km=5.0,
-    days_ahead=7
-)
+satellites = ["SAT-001", "SAT-002", "SAT-003", "SAT-004"]
+results = {}
+
+for sat_id in satellites:
+    conjunctions = client.list_conjunctions(
+        satellite_id=sat_id,
+        threshold_km=5.0,
+        limit=50
+    )
+    results[sat_id] = conjunctions
 
 for sat_id, conjunctions in results.items():
     print(f"\n{sat_id}: {len(conjunctions)} conjunctions")
     for conj in conjunctions:
-        print(f"  - {conj.secondary.name}: {conj.miss_km}km ({conj.risk_level})")
+        print(f"  - Miss: {conj['miss_distance_km']}km")
 ```
 
 ## Next Steps
