@@ -8,7 +8,7 @@ description: "Real-time alerts for orbital events"
 Receive real-time notifications when orbital events occur, including conjunctions, anomalies, and pattern detections.
 
 <Info>
-  **Status:** Coming Q1 2026 — [Request early access](https://rotastellar.com/early-access/) to be notified when available.
+  **Status:** Coming Q1 2026 — [Request early access](https://rotastellar.com/developers) to be notified when available.
 </Info>
 
 ## Overview
@@ -24,9 +24,9 @@ Webhooks deliver events to your application in real-time:
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 # Create a webhook endpoint
 webhook = client.webhooks.create(
@@ -40,9 +40,9 @@ print(f"Status: {webhook.status}")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 const webhook = await client.webhooks.create({
   url: 'https://your-app.com/rotastellar-events',

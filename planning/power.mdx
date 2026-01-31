@@ -24,9 +24,9 @@ Power in orbit is fundamentally different from Earth:
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 power = client.planning.power(
     orbit="LEO-550",
@@ -42,9 +42,9 @@ print(f"EOL margin: {power.eol_margin_percent}%")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 const power = await client.planning.power({
   orbit: 'LEO-550',

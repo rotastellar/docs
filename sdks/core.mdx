@@ -1,0 +1,154 @@
+---
+title: Core SDK
+description: "Authentication, base types, and API client for RotaStellar"
+---
+
+# Core SDK
+
+The foundation package for all RotaStellar SDKs. Provides authentication, common types, and the base API client.
+
+<Info>
+  **Demo Key:** `rs_demo_rotastellar2026` — Try instantly, no signup required (10 req/min)
+</Info>
+
+## Installation
+
+<CodeGroup>
+```bash Python
+pip install rotastellar
+```
+
+```bash Node.js
+npm install @rotastellar/sdk
+```
+
+```bash Rust
+cargo add rotastellar
+```
+</CodeGroup>
+
+## Quick Start
+
+<CodeGroup>
+```python Python
+from rotastellar import RotaStellarClient
+
+client = RotaStellarClient(api_key="rs_demo_rotastellar2026")
+sat = client.get_satellite("25544")  # ISS
+
+print(f"{sat.name}: {sat.position.latitude:.2f}°, {sat.position.longitude:.2f}°")
+print(f"Altitude: {sat.position.altitude_km:.1f} km")
+```
+
+```typescript Node.js
+import { RotaStellarClient } from '@rotastellar/sdk';
+
+const client = new RotaStellarClient({ apiKey: 'rs_demo_rotastellar2026' });
+const sat = await client.getSatellite('25544');
+
+console.log(`${sat.name}: ${sat.position?.latitude}°, ${sat.position?.longitude}°`);
+console.log(`Altitude: ${sat.position?.altitudeKm} km`);
+```
+
+```rust Rust
+use rotastellar::types::{Position, Orbit};
+
+// Rust SDK provides types only (HTTP client coming soon)
+let pos = Position::new(28.5729, -80.6490, 420.5)?;
+
+println!("Location: {:.2}°, {:.2}°", pos.latitude, pos.longitude);
+println!("Altitude: {:.1} km", pos.altitude_km);
+```
+</CodeGroup>
+
+## Core Types
+
+### Position
+
+Geographic coordinates with altitude.
+
+```python
+from rotastellar import Position
+
+# Kennedy Space Center
+ksc = Position(latitude=28.5729, longitude=-80.6490, altitude_km=0.0)
+```
+
+### Orbit
+
+Keplerian orbital elements with derived properties.
+
+```python
+from rotastellar import Orbit
+
+orbit = Orbit(
+    semi_major_axis_km=6778.0,
+    eccentricity=0.0001,
+    inclination_deg=51.6,
+    raan_deg=100.0,
+    arg_periapsis_deg=90.0,
+    true_anomaly_deg=0.0
+)
+
+print(f"Period: {orbit.period_minutes:.1f} min")
+print(f"Apogee: {orbit.apogee_km:.1f} km")
+print(f"Perigee: {orbit.perigee_km:.1f} km")
+```
+
+### TimeRange
+
+Time window specifications.
+
+```python
+from rotastellar import TimeRange
+from datetime import datetime, timedelta
+
+range = TimeRange(
+    start=datetime.utcnow(),
+    end=datetime.utcnow() + timedelta(hours=24)
+)
+```
+
+## Client Configuration
+
+```python
+from rotastellar import RotaStellarClient
+
+client = RotaStellarClient(
+    api_key="rs_...",
+    base_url="https://api.rotastellar.com/v1",  # Default
+    timeout=30.0,     # Request timeout in seconds
+    max_retries=3,    # Retry failed requests
+)
+```
+
+## Error Handling
+
+```python
+from rotastellar.errors import (
+    AuthenticationError,
+    RateLimitError,
+    NotFoundError,
+    APIError
+)
+
+try:
+    sat = client.satellites.get("INVALID")
+except NotFoundError:
+    print("Satellite not found")
+except RateLimitError as e:
+    print(f"Rate limited. Retry after {e.retry_after}s")
+except AuthenticationError:
+    print("Invalid API key")
+```
+
+## Links
+
+<CardGroup cols={2}>
+  <Card title="GitHub" icon="github" href="https://github.com/rotastellar">
+    Source code and examples
+  </Card>
+  <Card title="API Explorer" icon="code" href="https://api.rotastellar.com/docs">
+    Interactive Swagger UI
+  </Card>
+</CardGroup>

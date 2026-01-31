@@ -24,9 +24,9 @@ Space presents unique thermal challenges:
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 thermal = client.planning.thermal(
     orbit="LEO-550",
@@ -42,9 +42,9 @@ print(f"Thermal margin: {thermal.margin_c}C")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 const thermal = await client.planning.thermal({
   orbit: 'LEO-550',

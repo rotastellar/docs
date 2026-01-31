@@ -24,9 +24,9 @@ Feasibility analysis evaluates:
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 result = client.planning.analyze(
     workload="ai_inference",
@@ -43,9 +43,9 @@ print(f"Cost: ${result.cost_monthly}/mo")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 const result = await client.planning.analyze({
   workload: 'ai_inference',
