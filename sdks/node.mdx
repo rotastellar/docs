@@ -38,139 +38,177 @@ bun add @rotastellar/sdk
 ## Quick Start
 
 ```typescript
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
 // Initialize client
-const client = new RotaStellar({ apiKey: 'rs_your_api_key' });
+const client = new RotaStellarClient({ apiKey: 'rs_your_api_key' });
 
 // Or use environment variable
 // export ROTASTELLAR_API_KEY=rs_your_api_key
-const client = new RotaStellar();
+const client = new RotaStellarClient();
 
 // Track a satellite
-const iss = await client.intelligence.satellite('ISS');
-const pos = await iss.position();
-console.log(`ISS: ${pos.lat}, ${pos.lon}`);
+const iss = await client.getSatellite('25544');
+console.log(`ISS: ${iss.position?.lat}, ${iss.position?.lon}`);
 ```
 
 ## Client Configuration
 
 ```typescript
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({
+const client = new RotaStellarClient({
   apiKey: 'rs_...',
   baseUrl: 'https://api.rotastellar.com/v1', // Default
   timeout: 30000,    // Request timeout in ms
   maxRetries: 3,     // Retry failed requests
+  debug: false       // Enable debug logging
 });
-```
-
-## Planning API
-
-```typescript
-// Feasibility analysis
-const feasibility = await client.planning.analyze({
-  workload: 'ai_inference',
-  computeTflops: 100,
-  storageTb: 10,
-  bandwidthGbps: 1
-});
-
-console.log(`Recommended: ${feasibility.recommendation}`);
-console.log(`Orbit: ${feasibility.orbit}`);
-console.log(`Monthly cost: $${feasibility.costMonthly}`);
-
-// Thermal simulation
-const thermal = await client.planning.thermal({
-  orbit: 'LEO-550',
-  powerDissipationW: 500,
-  radiatorAreaM2: 2.0
-});
-
-console.log(`Max temp: ${thermal.maxTempC}°C`);
-
-// Latency simulation
-const latency = await client.planning.latency({
-  orbit: 'LEO-550',
-  groundStations: ['us-west', 'europe', 'asia'],
-  includeIsl: true
-});
-
-console.log(`P50: ${latency.p50Ms}ms`);
-console.log(`P99: ${latency.p99Ms}ms`);
-
-// Power budgeting
-const power = await client.planning.power({
-  orbit: 'LEO-550',
-  computeLoadW: 500,
-  dutyCycle: 0.8,
-  missionLifeYears: 5
-});
-
-console.log(`Solar array: ${power.solarArrayM2} m²`);
 ```
 
 ## Intelligence API
 
+### Get Satellite
+
 ```typescript
-// Get satellite
-const sat = await client.intelligence.satellite('STARLINK-1234');
-const pos = await sat.position();
-const orbit = await sat.orbit();
+// Get satellite by NORAD ID
+const sat = await client.getSatellite('25544'); // ISS
+console.log(`Name: ${sat.name}`);
+console.log(`Position: ${sat.position?.lat}, ${sat.position?.lon}`);
+console.log(`Altitude: ${sat.position?.altitudeKm} km`);
 
-console.log(`Position: ${pos.lat}, ${pos.lon}`);
-console.log(`Altitude: ${pos.altitudeKm} km`);
-console.log(`Period: ${orbit.periodMin} minutes`);
+// Get position only
+const pos = await client.getSatellitePosition('25544');
+console.log(`Velocity: ${pos.velocityKmS} km/s`);
+```
 
-// List satellites
-const starlinks = await client.intelligence.satellites({
+### List Satellites
+
+```typescript
+// List satellites with filters
+const satellites = await client.listSatellites({
   constellation: 'Starlink',
   limit: 100
 });
 
-for (const s of starlinks) {
-  console.log(s.name);
+for (const sat of satellites) {
+  console.log(`${sat.name}: ${sat.noradId}`);
 }
 
-// Trajectory
-const trajectory = await sat.trajectory({
-  start: new Date(),
-  end: new Date(Date.now() + 24 * 60 * 60 * 1000), // +24h
-  intervalSec: 300
+// Filter by operator
+const spacexSats = await client.listSatellites({
+  operator: 'SpaceX',
+  limit: 50
 });
+```
 
-for (const point of trajectory.points) {
-  console.log(`${point.timestamp}: ${point.lat}, ${point.lon}`);
-}
+### Conjunction Analysis
 
-// Conjunction analysis
-const conjunctions = await client.intelligence.conjunctions({
-  satellite: 'STARLINK-1234',
-  thresholdKm: 1.0,
-  daysAhead: 7
+```typescript
+import { TimeRange } from '@rotastellar/sdk';
+
+// Get conjunction risks for a satellite
+const conjunctions = await client.listConjunctions({
+  satelliteId: '25544',
+  thresholdKm: 5.0,
+  limit: 10
 });
 
 for (const conj of conjunctions) {
-  console.log(`TCA: ${conj.tca}, Miss: ${conj.missKm}km`);
+  console.log(`TCA: ${conj.tca}`);
+  console.log(`Miss distance: ${conj.miss_distance_km.toFixed(3)} km`);
+  console.log(`Probability: ${conj.collision_probability.toExponential(2)}`);
 }
+```
 
-// Pattern detection
-const patterns = await client.intelligence.patterns({
-  satellite: 'COSMOS-2542',
+### Pattern Detection
+
+```typescript
+// Detect maneuvers and anomalies
+const patterns = await client.listPatterns({
+  satelliteId: '44832', // COSMOS-2542
   lookbackDays: 30
 });
 
 for (const pattern of patterns) {
   console.log(`${pattern.type}: ${pattern.description}`);
+  console.log(`Confidence: ${(pattern.confidence * 100).toFixed(1)}%`);
 }
+```
+
+### Trajectory Prediction
+
+```typescript
+// Get predicted trajectory
+const trajectory = await client.getTrajectory({
+  satelliteId: '25544',
+  start: new Date(),
+  end: new Date(Date.now() + 2 * 60 * 60 * 1000), // +2 hours
+  intervalSec: 60
+});
+
+for (const point of trajectory) {
+  console.log(`${point.timestamp}: ${point.lat.toFixed(2)}, ${point.lon.toFixed(2)}`);
+}
+```
+
+## Planning API
+
+### Feasibility Analysis
+
+```typescript
+// Analyze if orbital compute is viable for your workload
+const result = await client.analyzeFeasibility({
+  workloadType: 'inference',
+  computeTflops: 10,
+  dataGb: 1.5,
+  latencyRequirementMs: 100,
+  orbitAltitudeKm: 550
+});
+
+console.log(`Feasible: ${result.feasible}`);
+console.log(`Recommendation: ${result.recommendation}`);
+```
+
+### Thermal Simulation
+
+```typescript
+// Model heat rejection in orbit
+const thermal = await client.simulateThermal({
+  powerWatts: 500,
+  orbitAltitudeKm: 550,
+  radiatorAreaM2: 2.0,
+  durationHours: 24
+});
+
+console.log(`Max temp: ${thermal.max_temperature_c}°C`);
+console.log(`Min temp: ${thermal.min_temperature_c}°C`);
+```
+
+### Latency Simulation
+
+```typescript
+import { Position } from '@rotastellar/sdk';
+
+// Model end-to-end latency
+const source = new Position(37.7749, -122.4194); // San Francisco
+const dest = new Position(51.5074, -0.1278);     // London
+
+const latency = await client.simulateLatency({
+  source,
+  destination: dest,
+  orbitAltitudeKm: 550,
+  relayCount: 2
+});
+
+console.log(`Total latency: ${latency.total_latency_ms?.toFixed(1)} ms`);
 ```
 
 ## Runtime API (Coming Q2 2026)
 
 ```typescript
-// Submit job
-const job = await client.runtime.submit({
+// Submit inference job to orbital compute
+const job = await client.submitJob({
   model: 'llama-70b',
   prompt: '...',
   constraints: {
@@ -180,9 +218,114 @@ const job = await client.runtime.submit({
 });
 
 // Get result
-const result = await job.result({ timeout: 30000 });
+const result = await client.getJobResult(job.id, { timeout: 30000 });
 console.log(result.text);
-console.log(result.adaptations);
+```
+
+## Pagination
+
+Handle large result sets:
+
+```typescript
+// Automatic pagination with async iteration
+for await (const sat of client.listSatellitesPaginated({
+  constellation: 'Starlink'
+})) {
+  console.log(sat.name);
+}
+
+// Manual pagination
+let page = await client.listSatellites({
+  constellation: 'Starlink',
+  limit: 100
+});
+
+while (page.hasMore) {
+  for (const sat of page.items) {
+    console.log(sat.name);
+  }
+  page = await page.nextPage();
+}
+```
+
+## TypeScript Support
+
+Full TypeScript definitions are included:
+
+```typescript
+import { RotaStellarClient } from '@rotastellar/sdk';
+import type {
+  Satellite,
+  Position,
+  Orbit,
+  Conjunction,
+  Pattern
+} from '@rotastellar/sdk';
+
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
+
+const sat: Satellite = await client.getSatellite('25544');
+const pos: Position = sat.position!;
+const orbit: Orbit = sat.orbit!;
+
+// Full autocomplete and type checking
+console.log(pos.lat);         // number
+console.log(pos.lon);         // number
+console.log(pos.altitudeKm);  // number
+console.log(orbit.periodMin); // number
+```
+
+## Error Handling
+
+```typescript
+import { RotaStellarClient } from '@rotastellar/sdk';
+import {
+  AuthenticationError,
+  RateLimitError,
+  NotFoundError,
+  ValidationError,
+  APIError
+} from '@rotastellar/sdk';
+
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
+
+try {
+  const sat = await client.getSatellite('INVALID-ID');
+} catch (error) {
+  if (error instanceof NotFoundError) {
+    console.log('Satellite not found');
+  } else if (error instanceof RateLimitError) {
+    console.log(`Rate limited. Retry after ${error.retryAfter}s`);
+  } else if (error instanceof AuthenticationError) {
+    console.log('Invalid API key');
+  } else if (error instanceof ValidationError) {
+    console.log(`Invalid request: ${error.message}`);
+  } else if (error instanceof APIError) {
+    console.log(`API error: ${error.message}`);
+  }
+}
+```
+
+## Request Cancellation
+
+Cancel long-running requests:
+
+```typescript
+const controller = new AbortController();
+
+// Cancel after 5 seconds
+setTimeout(() => controller.abort(), 5000);
+
+try {
+  const result = await client.analyzeFeasibility({
+    workloadType: 'inference',
+    computeTflops: 100
+  }, { signal: controller.signal });
+} catch (error) {
+  if (error.name === 'AbortError') {
+    console.log('Request cancelled');
+  }
+}
 ```
 
 ## Distributed Compute API (Coming Q1 2026)
@@ -214,208 +357,28 @@ const client = new FederatedClient({
   compression
 });
 
-// Train locally
-const gradients = client.trainStep(model, batch);
-
 // Sync during ground pass
 await client.sync(gradients, { priority: 'high' });
-```
-
-### Model Partitioning
-
-```typescript
-import { PartitionOptimizer, ModelProfile } from '@rotastellar/distributed';
-
-// Profile your model
-const profile = ModelProfile.fromOnnx('model.onnx');
-
-// Find optimal partition
-const optimizer = new PartitionOptimizer({ apiKey: 'rs_...' });
-const partition = await optimizer.optimize({
-  model: profile,
-  topology: {
-    groundNodes: 3,
-    orbitalNodes: 5,
-    groundFlops: 100e12,
-    orbitalFlops: 20e12
-  },
-  objective: 'minimize_latency'
-});
-
-console.log(partition.groundLayers);
-console.log(partition.orbitalLayers);
-```
-
-### Sync Scheduler
-
-```typescript
-import { SyncScheduler, GroundStation } from '@rotastellar/distributed';
-
-const scheduler = new SyncScheduler({
-  apiKey: 'rs_...',
-  groundStations: [
-    new GroundStation('svalbard', { lat: 78.2, lon: 15.6, bandwidth: 1e9 }),
-    new GroundStation('singapore', { lat: 1.3, lon: 103.8, bandwidth: 500e6 })
-  ]
-});
-
-// Get sync windows
-const windows = await scheduler.getWindows({ hours: 24 });
-
-// Schedule sync
-await scheduler.scheduleSync({
-  node: 'orbital-1',
-  dataSize: 50e6,
-  priority: 'critical'
-});
 ```
 
 <Info>
   See the [Distributed Compute documentation](/distributed/overview) for full API reference.
 </Info>
 
-## TypeScript Support
-
-Full TypeScript definitions are included:
-
-```typescript
-import { RotaStellar } from '@rotastellar/sdk';
-import type {
-  Satellite,
-  Position,
-  Orbit,
-  Conjunction,
-  Pattern,
-  FeasibilityResult
-} from '@rotastellar/sdk';
-
-const client = new RotaStellar({ apiKey: 'rs_...' });
-
-const sat: Satellite = await client.intelligence.satellite('ISS');
-const pos: Position = await sat.position();
-const orbit: Orbit = await sat.orbit();
-
-// Full autocomplete and type checking
-console.log(pos.lat);         // number
-console.log(pos.lon);         // number
-console.log(pos.altitudeKm);  // number
-console.log(orbit.periodMin); // number
-```
-
-## Error Handling
-
-```typescript
-import { RotaStellar } from '@rotastellar/sdk';
-import {
-  AuthenticationError,
-  RateLimitError,
-  NotFoundError,
-  ValidationError,
-  APIError
-} from '@rotastellar/sdk';
-
-const client = new RotaStellar({ apiKey: 'rs_...' });
-
-try {
-  const sat = await client.intelligence.satellite('INVALID-ID');
-} catch (error) {
-  if (error instanceof NotFoundError) {
-    console.log('Satellite not found');
-  } else if (error instanceof RateLimitError) {
-    console.log(`Rate limited. Retry after ${error.retryAfter}s`);
-  } else if (error instanceof AuthenticationError) {
-    console.log('Invalid API key');
-  } else if (error instanceof ValidationError) {
-    console.log(`Invalid request: ${error.message}`);
-  } else if (error instanceof APIError) {
-    console.log(`API error: ${error.message}`);
-  }
-}
-```
-
-## Pagination
-
-Handle large result sets:
-
-```typescript
-// Automatic pagination with async iteration
-for await (const sat of client.intelligence.satellites({
-  constellation: 'Starlink'
-})) {
-  console.log(sat.name);
-}
-
-// Manual pagination
-let page = await client.intelligence.satellites({
-  constellation: 'Starlink',
-  limit: 100
-});
-
-while (page) {
-  for (const sat of page.items) {
-    console.log(sat.name);
-  }
-
-  if (page.hasMore) {
-    page = await page.nextPage();
-  } else {
-    break;
-  }
-}
-```
-
-## Streaming
-
-For real-time updates:
-
-```typescript
-// Stream conjunction updates
-const stream = client.intelligence.conjunctions.stream({
-  satellite: 'STARLINK-1234',
-  thresholdKm: 5.0
-});
-
-for await (const update of stream) {
-  console.log(`New conjunction: ${update.tca}, Miss: ${update.missKm}km`);
-}
-```
-
-## Request Cancellation
-
-Cancel long-running requests:
-
-```typescript
-const controller = new AbortController();
-
-// Cancel after 5 seconds
-setTimeout(() => controller.abort(), 5000);
-
-try {
-  const result = await client.planning.analyze({
-    workload: 'ai_inference',
-    computeTflops: 100
-  }, { signal: controller.signal });
-} catch (error) {
-  if (error.name === 'AbortError') {
-    console.log('Request cancelled');
-  }
-}
-```
-
 ## Logging
 
 Enable debug logging:
 
 ```typescript
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({
+const client = new RotaStellarClient({
   apiKey: 'rs_...',
   debug: true  // Logs all requests/responses
 });
 
 // Or use custom logger
-const client = new RotaStellar({
+const client = new RotaStellarClient({
   apiKey: 'rs_...',
   logger: {
     debug: console.debug,
