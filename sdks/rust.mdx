@@ -259,9 +259,11 @@ println!("Response: {}", result.text);
 
 ## Pagination
 
-Handle large result sets:
+Handle large result sets with the `PaginatedResponse` type:
 
 ```rust
+use rotastellar::types::PaginatedResponse;
+
 // Manual pagination
 let mut page = client.list_satellites()
     .constellation("Starlink")
@@ -269,18 +271,38 @@ let mut page = client.list_satellites()
     .send()
     .await?;
 
-loop {
-    for sat in &page.items {
-        println!("{}", sat.name);
-    }
+println!("Page has {} items, has_more={}", page.items.len(), page.has_more);
 
-    if page.has_more {
-        page = page.next_page().await?;
-    } else {
-        break;
-    }
+for sat in &page.items {
+    println!("{}", sat.name);
+}
+
+if page.has_more {
+    page = page.next_page().await?;
+}
+
+// Stream-based iteration (auto-fetches pages)
+use futures::StreamExt;
+
+let mut stream = client.list_satellites()
+    .constellation("Starlink")
+    .stream();
+
+while let Some(sat) = stream.next().await {
+    let sat = sat?;
+    println!("{}", sat.name);
 }
 ```
+
+### PaginatedResponse Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `items` | `Vec<T>` | Current page of items |
+| `has_more` | `bool` | Whether more pages exist |
+| `total` | `Option<usize>` | Total count (if available) |
+| `limit` | `usize` | Page size |
+| `offset` | `usize` | Current offset |
 
 ## Error Handling
 

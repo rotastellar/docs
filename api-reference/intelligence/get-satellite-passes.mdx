@@ -1,0 +1,96 @@
+---
+title: Get Satellite Passes
+api: GET /v1/satellites/{satellite_id}/passes
+description: "Predict when satellite will pass over an observer location"
+---
+
+## Request
+
+<ParamField path="satellite_id" type="string" required>
+  NORAD catalog ID or common name (e.g., "25544" or "ISS")
+</ParamField>
+
+<ParamField query="lat" type="number" required>
+  Observer latitude in degrees
+</ParamField>
+
+<ParamField query="lon" type="number" required>
+  Observer longitude in degrees
+</ParamField>
+
+<ParamField query="hours" type="integer" default="24">
+  Prediction window in hours (max: 168)
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://api.rotastellar.com/v1/satellites/25544/passes?lat=40.7128&lon=-74.0060&hours=48" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellarClient
+
+client = RotaStellarClient(api_key="rs_...")
+
+# Predict ISS passes over New York for next 48 hours
+response = client.http.get("/satellites/25544/passes", {
+    "lat": 40.7128,
+    "lon": -74.0060,
+    "hours": 48
+})
+
+print(f"Found {response['count']} passes in next 48 hours")
+for p in response["passes"]:
+    print(f"  AOS: {p['aos']}, Max elevation: {p['max_elevation_deg']:.1f}°")
+```
+
+```typescript Node.js
+import { RotaStellarClient } from '@rotastellar/sdk';
+
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
+
+const response = await client.http.get('/satellites/25544/passes', {
+  lat: 40.7128,
+  lon: -74.0060,
+  hours: 48
+});
+
+console.log(`Found ${response.count} passes in next 48 hours`);
+for (const p of response.passes) {
+  console.log(`  AOS: ${p.aos}, Max elevation: ${p.max_elevation_deg.toFixed(1)}°`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "satellite_id": "25544",
+  "observer": {
+    "lat": 40.7128,
+    "lon": -74.0060
+  },
+  "prediction_window_hours": 48,
+  "passes": [
+    {
+      "aos": "2026-01-21T06:23:15Z",
+      "los": "2026-01-21T06:32:45Z",
+      "duration_min": 9.5,
+      "max_elevation_deg": 67.2,
+      "aos_azimuth_deg": 312,
+      "los_azimuth_deg": 142
+    },
+    {
+      "aos": "2026-01-21T08:01:30Z",
+      "los": "2026-01-21T08:08:12Z",
+      "duration_min": 6.7,
+      "max_elevation_deg": 32.8,
+      "aos_azimuth_deg": 298,
+      "los_azimuth_deg": 168
+    }
+  ],
+  "count": 8
+}
+```
+</ResponseExample>

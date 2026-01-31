@@ -1,0 +1,89 @@
+---
+title: Get Satellite Visibility
+api: GET /v1/satellites/{satellite_id}/visibility
+description: "Check which ground stations can currently see the satellite"
+---
+
+## Request
+
+<ParamField path="satellite_id" type="string" required>
+  NORAD catalog ID or common name (e.g., "25544" or "ISS")
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl https://api.rotastellar.com/v1/satellites/25544/visibility \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellarClient
+
+client = RotaStellarClient(api_key="rs_...")
+
+# Get visibility from all ground stations
+response = client.http.get("/satellites/25544/visibility")
+print(f"Visible from {response['visible_count']} of {response['total_stations']} stations")
+
+for gs in response["ground_stations"]:
+    if gs["visible"]:
+        print(f"  {gs['station']['name']}: elevation {gs['elevation_deg']:.1f}°")
+```
+
+```typescript Node.js
+import { RotaStellarClient } from '@rotastellar/sdk';
+
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
+
+const response = await client.http.get('/satellites/25544/visibility');
+console.log(`Visible from ${response.visible_count} of ${response.total_stations} stations`);
+
+for (const gs of response.ground_stations) {
+  if (gs.visible) {
+    console.log(`  ${gs.station.name}: elevation ${gs.elevation_deg.toFixed(1)}°`);
+  }
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "satellite_id": "25544",
+  "satellite_position": {
+    "lat": 41.264,
+    "lon": -95.123,
+    "altitude_km": 420.5,
+    "timestamp": "2026-01-21T12:00:00Z"
+  },
+  "ground_stations": [
+    {
+      "station": {
+        "id": "gs_svalbard",
+        "name": "Svalbard",
+        "lat": 78.23,
+        "lon": 15.39
+      },
+      "visible": true,
+      "elevation_deg": 23.5,
+      "slant_range_km": 1245.3,
+      "azimuth_deg": 182.4
+    },
+    {
+      "station": {
+        "id": "gs_hawaii",
+        "name": "Hawaii",
+        "lat": 19.82,
+        "lon": -155.47
+      },
+      "visible": false,
+      "elevation_deg": -12.3,
+      "slant_range_km": null,
+      "azimuth_deg": 45.2
+    }
+  ],
+  "visible_count": 3,
+  "total_stations": 12
+}
+```
+</ResponseExample>

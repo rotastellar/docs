@@ -17,23 +17,22 @@ curl https://api.rotastellar.com/v1/satellites/ISS \
 ```
 
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
-iss = client.intelligence.satellite("ISS")
+iss = client.get_satellite("ISS")
 print(f"Name: {iss.name}")
-print(f"Altitude: {iss.position().altitude_km} km")
+print(f"Altitude: {iss.position.altitude_km} km")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
-const iss = await client.intelligence.satellite('ISS');
-const pos = await iss.position();
-console.log(`Altitude: ${pos.altitudeKm} km`);
+const iss = await client.getSatellite('ISS');
+console.log(`Altitude: ${iss.position?.altitudeKm} km`);
 ```
 </RequestExample>
 

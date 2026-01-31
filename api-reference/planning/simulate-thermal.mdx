@@ -44,29 +44,35 @@ curl -X POST https://api.rotastellar.com/v1/planning/thermal \
 ```
 
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
-thermal = client.planning.thermal(
-    orbit="LEO-550",
-    power_dissipation_w=500,
+thermal = client.simulate_thermal(
+    power_watts=500,
+    orbit_altitude_km=550,
     radiator_area_m2=2.0,
-    internal_mass_kg=100
+    duration_hours=24
 )
+
+print(f"Max temp: {thermal['max_temperature_c']}°C")
+print(f"Min temp: {thermal['min_temperature_c']}°C")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
-const thermal = await client.planning.thermal({
-  orbit: 'LEO-550',
-  powerDissipationW: 500,
+const thermal = await client.simulateThermal({
+  powerWatts: 500,
+  orbitAltitudeKm: 550,
   radiatorAreaM2: 2.0,
-  internalMassKg: 100
+  durationHours: 24
 });
+
+console.log(`Max temp: ${thermal.max_temperature_c}°C`);
+console.log(`Min temp: ${thermal.min_temperature_c}°C`);
 ```
 </RequestExample>
 

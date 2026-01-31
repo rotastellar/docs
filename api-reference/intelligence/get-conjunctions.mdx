@@ -29,33 +29,32 @@ curl "https://api.rotastellar.com/v1/conjunctions?satellite=STARLINK-1234&thresh
 ```
 
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
-conjunctions = client.intelligence.conjunctions(
-    satellite="STARLINK-1234",
+conjunctions = client.list_conjunctions(
+    satellite_id="STARLINK-1234",
     threshold_km=5.0,
-    days_ahead=7
+    limit=100
 )
 
 for conj in conjunctions:
-    print(f"TCA: {conj.tca}, Miss: {conj.miss_km}km")
+    print(f"TCA: {conj['tca']}, Miss: {conj['miss_distance_km']}km")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
-const conjunctions = await client.intelligence.conjunctions({
-  satellite: 'STARLINK-1234',
-  thresholdKm: 5.0,
-  daysAhead: 7
+const conjunctions = await client.listConjunctions({
+  satelliteId: 'STARLINK-1234',
+  thresholdKm: 5.0
 });
 
 for (const conj of conjunctions) {
-  console.log(`TCA: ${conj.tca}, Miss: ${conj.missKm}km`);
+  console.log(`TCA: ${conj.tca}, Miss: ${conj.miss_distance_km}km`);
 }
 ```
 </RequestExample>

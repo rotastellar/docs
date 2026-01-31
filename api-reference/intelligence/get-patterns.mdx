@@ -29,26 +29,26 @@ curl "https://api.rotastellar.com/v1/patterns?satellite=COSMOS-2542&lookback_day
 ```
 
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
-patterns = client.intelligence.patterns(
-    satellite="COSMOS-2542",
+patterns = client.list_patterns(
+    satellite_id="COSMOS-2542",
     lookback_days=30
 )
 
 for pattern in patterns:
-    print(f"{pattern.type}: {pattern.description}")
+    print(f"{pattern['type']}: {pattern['description']}")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
-const patterns = await client.intelligence.patterns({
-  satellite: 'COSMOS-2542',
+const patterns = await client.listPatterns({
+  satelliteId: 'COSMOS-2542',
   lookbackDays: 30
 });
 

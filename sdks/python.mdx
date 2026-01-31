@@ -245,21 +245,40 @@ asyncio.run(main())
 
 ## Pagination
 
-Handle large result sets efficiently:
+Handle large result sets with the `PaginatedResponse` class:
 
 ```python
-# Automatic iteration
-for sat in client.list_satellites(constellation="Starlink"):
-    print(sat.name)
+from rotastellar import PaginatedResponse
 
 # Manual pagination
 page = client.list_satellites(constellation="Starlink", limit=100)
 
-while page.has_more:
-    for sat in page.items:
-        print(sat.name)
-    page = page.next_page()
+print(f"Page has {len(page.items)} items, has_more={page.has_more}")
+
+for sat in page.items:
+    print(sat.name)
+
+if page.has_more:
+    next_page = page.next_page()
+
+# Automatic iteration (auto-fetches next pages)
+for sat in client.list_satellites(constellation="Starlink"):
+    print(sat.name)
+
+# Async auto-pagination
+async for sat in async_client.list_satellites(constellation="Starlink"):
+    print(sat.name)
 ```
+
+### PaginatedResponse Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `items` | `List[T]` | Current page of items |
+| `has_more` | `bool` | Whether more pages exist |
+| `total` | `int \| None` | Total count (if available) |
+| `limit` | `int` | Page size |
+| `offset` | `int` | Current offset |
 
 ## Distributed Compute API (Coming Q1 2026)
 

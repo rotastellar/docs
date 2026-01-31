@@ -1,0 +1,103 @@
+---
+title: Get Satellite Feasibility
+api: GET /v1/satellites/{satellite_id}/feasibility
+description: "Evaluate if a satellite's orbit is suitable for orbital compute workloads"
+---
+
+## Request
+
+<ParamField path="satellite_id" type="string" required>
+  NORAD catalog ID or common name (e.g., "25544" or "ISS")
+</ParamField>
+
+<ParamField query="power_w" type="number" default="100">
+  Workload power requirement in watts
+</ParamField>
+
+<ParamField query="thermal_w" type="number" default="30">
+  Thermal dissipation requirement in watts
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://api.rotastellar.com/v1/satellites/25544/feasibility?power_w=150&thermal_w=50" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellarClient
+
+client = RotaStellarClient(api_key="rs_...")
+
+# Analyze feasibility for orbital compute
+response = client.http.get("/satellites/25544/feasibility", {
+    "power_w": 150,
+    "thermal_w": 50
+})
+
+print(f"Feasibility score: {response['feasibility']['score']}/100")
+print(f"Grade: {response['feasibility']['grade']}")
+print(f"Viable: {response['feasibility']['viable']}")
+```
+
+```typescript Node.js
+import { RotaStellarClient } from '@rotastellar/sdk';
+
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
+
+const response = await client.http.get('/satellites/25544/feasibility', {
+  power_w: 150,
+  thermal_w: 50
+});
+
+console.log(`Feasibility score: ${response.feasibility.score}/100`);
+console.log(`Grade: ${response.feasibility.grade}`);
+console.log(`Viable: ${response.feasibility.viable}`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "satellite": {
+    "id": "25544",
+    "name": "ISS (ZARYA)",
+    "altitude_km": 420,
+    "inclination_deg": 51.64,
+    "period_min": 92.9
+  },
+  "feasibility": {
+    "score": 78,
+    "grade": "B",
+    "viable": true
+  },
+  "orbital_environment": {
+    "eclipse_fraction": 0.36,
+    "sunlit_minutes_per_orbit": 59.5,
+    "thermal_cycle_stress": "moderate",
+    "radiation_level": "low"
+  },
+  "power_budget": {
+    "avg_power_available_w": 250,
+    "eclipse_power_w": 180,
+    "peak_solar_w": 320
+  },
+  "thermal_budget": {
+    "max_temp_c": 45,
+    "min_temp_c": -20,
+    "safe_operating_range_c": [-10, 40]
+  },
+  "communication": {
+    "passes_per_day": 8,
+    "avg_pass_duration_min": 7.5,
+    "daily_contact_min": 60,
+    "round_trip_latency_ms": 12
+  },
+  "issues": [],
+  "recommendations": [
+    "Consider thermal management for continuous operation",
+    "Battery sizing adequate for eclipse periods"
+  ]
+}
+```
+</ResponseExample>

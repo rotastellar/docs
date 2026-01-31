@@ -1,0 +1,72 @@
+---
+title: List Ground Stations
+api: GET /v1/ground-stations
+description: "Get all available ground stations in the network"
+---
+
+## Request
+
+No parameters required.
+
+<RequestExample>
+```bash cURL
+curl https://api.rotastellar.com/v1/ground-stations \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellarClient
+
+client = RotaStellarClient(api_key="rs_...")
+
+# List all ground stations
+response = client.http.get("/ground-stations")
+for station in response["stations"]:
+    print(f"{station['name']}: {station['lat']}, {station['lon']}")
+```
+
+```typescript Node.js
+import { RotaStellarClient } from '@rotastellar/sdk';
+
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
+
+const response = await client.http.get('/ground-stations');
+for (const station of response.stations) {
+  console.log(`${station.name}: ${station.lat}, ${station.lon}`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "stations": [
+    {
+      "id": "gs_svalbard",
+      "name": "Svalbard",
+      "lat": 78.23,
+      "lon": 15.39,
+      "provider": "KSAT",
+      "capabilities": ["s-band", "x-band", "ka-band"]
+    },
+    {
+      "id": "gs_hawaii",
+      "name": "Hawaii",
+      "lat": 19.82,
+      "lon": -155.47,
+      "provider": "AWS Ground Station",
+      "capabilities": ["s-band", "x-band"]
+    },
+    {
+      "id": "gs_singapore",
+      "name": "Singapore",
+      "lat": 1.35,
+      "lon": 103.82,
+      "provider": "KSAT",
+      "capabilities": ["s-band", "x-band"]
+    }
+  ],
+  "count": 12
+}
+```
+</ResponseExample>
