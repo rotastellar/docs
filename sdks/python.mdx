@@ -49,7 +49,7 @@ client = RotaStellarClient()
 
 # Track a satellite
 iss = client.get_satellite("25544")
-print(f"ISS: {iss.position.lat}, {iss.position.lon}")
+print(f"ISS: {iss.position.latitude}, {iss.position.longitude}")
 ```
 
 ## Client Configuration
@@ -74,12 +74,12 @@ client = RotaStellarClient(
 # Get satellite by NORAD ID
 sat = client.get_satellite("25544")  # ISS
 print(f"Name: {sat.name}")
-print(f"Position: {sat.position.lat}, {sat.position.lon}")
+print(f"Position: {sat.position.latitude}, {sat.position.longitude}")
 print(f"Altitude: {sat.position.altitude_km} km")
 
 # Get position only
 pos = client.get_satellite_position("25544")
-print(f"Velocity: {pos.velocity_km_s} km/s")
+print(f"Position: {pos.latitude}, {pos.longitude} at {pos.altitude_km} km")
 ```
 
 ### List Satellites
@@ -135,11 +135,11 @@ for pattern in patterns:
 ```python
 from datetime import datetime, timedelta
 
-# Get predicted trajectory
+# Get predicted trajectory (start/end are ISO 8601 strings)
 trajectory = client.get_trajectory(
     satellite_id="25544",
-    start=datetime.utcnow(),
-    end=datetime.utcnow() + timedelta(hours=2),
+    start=datetime.utcnow().isoformat(),
+    end=(datetime.utcnow() + timedelta(hours=2)).isoformat(),
     interval_sec=60
 )
 
@@ -230,7 +230,7 @@ async def main():
 
     # Async satellite tracking
     iss = await client.get_satellite("25544")
-    print(f"ISS: {iss.position.lat}, {iss.position.lon}")
+    print(f"ISS: {iss.position.latitude}, {iss.position.longitude}")
 
     # Concurrent requests
     satellites = ["25544", "43013", "20580"]
@@ -291,11 +291,11 @@ pip install rotastellar-distributed
 ### Federated Learning
 
 ```python
-from rotastellar_distributed import FederatedClient, CompressionConfig
+from rotastellar_distributed import FederatedClient, CompressionConfig, CompressionMethod
 
 # Configure gradient compression (100x reduction)
 compression = CompressionConfig(
-    method="topk_quantized",
+    method=CompressionMethod.TOP_K_QUANTIZED,
     k_ratio=0.01,
     quantization_bits=8,
     error_feedback=True
@@ -303,14 +303,14 @@ compression = CompressionConfig(
 
 # Initialize client on orbital node
 client = FederatedClient(
-    api_key="rs_...",
     node_id="orbital-3",
-    node_type="orbital",
-    compression=compression
+    compression=compression,
+    node_type="orbital"
 )
 
-# Sync during ground pass
-client.sync(gradients, priority="high")
+# Compute and compress gradients for transmission
+gradients = client.compute_gradients(model_params, local_data)
+compressed = client.compress(gradients)
 ```
 
 <Info>
@@ -360,10 +360,10 @@ pos: Position = sat.position
 orbit: Orbit = sat.orbit
 
 # IDE will provide autocomplete for all fields
-print(pos.lat)          # float
-print(pos.lon)          # float
-print(pos.altitude_km)  # float
-print(orbit.period_min) # float
+print(pos.latitude)              # float
+print(pos.longitude)             # float
+print(pos.altitude_km)           # float
+print(orbit.orbital_period_minutes)  # float
 ```
 
 ## Logging

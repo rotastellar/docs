@@ -5,11 +5,15 @@ description: "Official Rust SDK for the RotaStellar API"
 
 # Rust SDK
 
-The official Rust SDK for RotaStellar, providing type-safe access to Planning, Intelligence, and Runtime APIs.
+The official Rust SDK for RotaStellar, providing type-safe primitives for orbital compute and space intelligence applications.
 
 <Info>
   **Status:** Early Access — [Request API key](https://rotastellar.com/developers)
 </Info>
+
+<Warning>
+  The Rust SDK currently provides **types only**. The HTTP client is coming in a future release. For full API access, use the [Python SDK](/sdks/python) or [Node.js SDK](/sdks/node).
+</Warning>
 
 ## Installation
 
@@ -18,393 +22,218 @@ Add to your `Cargo.toml`:
 ```toml
 [dependencies]
 rotastellar = "0.1"
-tokio = { version = "1", features = ["full"] }
 ```
 
 Or use cargo:
 
 ```bash
 cargo add rotastellar
-cargo add tokio --features full
-```
-
-### Feature Flags
-
-```toml
-[dependencies]
-rotastellar = { version = "0.1", features = ["rustls"] }
-
-# Available features:
-# - rustls: Use rustls instead of native-tls (default)
-# - native-tls: Use native TLS
-# - blocking: Enable blocking client
 ```
 
 ## Quick Start
 
 ```rust
-use rotastellar::RotaStellarClient;
+use rotastellar::types::{Position, Orbit, Satellite};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize client
-    let client = RotaStellarClient::new("rs_your_api_key")?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create a position (e.g., Kennedy Space Center)
+    let pos = Position::new(28.5729, -80.6490, 0.0)?;
+    println!("Position: {}, {}", pos.latitude, pos.longitude);
 
-    // Or from environment variable
-    // export ROTASTELLAR_API_KEY=rs_your_api_key
-    let client = RotaStellarClient::from_env()?;
-
-    // Track a satellite
-    let iss = client.get_satellite("25544").await?;
-    println!("ISS: {}, {}", iss.position.lat, iss.position.lon);
+    // Create an ISS-like orbit
+    let orbit = Orbit::new(6778.0, 0.0001, 51.6, 100.0, 90.0, 0.0)?;
+    println!("Orbital period: {:.1} minutes", orbit.orbital_period_minutes());
+    println!("Apogee: {:.1} km, Perigee: {:.1} km", orbit.apogee_km(), orbit.perigee_km());
 
     Ok(())
 }
 ```
 
-## Client Configuration
+## Available Types
 
-```rust
-use rotastellar::{RotaStellarClient, Config};
-use std::time::Duration;
+### Position
 
-let config = Config::builder()
-    .api_key("rs_...")
-    .base_url("https://api.rotastellar.com/v1")
-    .timeout(Duration::from_secs(30))
-    .max_retries(3)
-    .build()?;
-
-let client = RotaStellarClient::with_config(config)?;
-```
-
-## Intelligence API
-
-### Get Satellite
-
-```rust
-use rotastellar::RotaStellarClient;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = RotaStellarClient::new("rs_...")?;
-
-    // Get satellite by NORAD ID
-    let sat = client.get_satellite("25544").await?; // ISS
-    println!("Name: {}", sat.name);
-    println!("Position: {}, {}", sat.position.lat, sat.position.lon);
-    println!("Altitude: {} km", sat.position.altitude_km);
-
-    // Get position only
-    let pos = client.get_satellite_position("25544", None).await?;
-    println!("Velocity: {} km/s", pos.velocity_km_s);
-
-    Ok(())
-}
-```
-
-### List Satellites
-
-```rust
-// List satellites with filters
-let satellites = client.list_satellites()
-    .constellation("Starlink")
-    .limit(100)
-    .send()
-    .await?;
-
-for sat in satellites {
-    println!("{}: {}", sat.name, sat.norad_id);
-}
-
-// Filter by operator
-let spacex_sats = client.list_satellites()
-    .operator("SpaceX")
-    .limit(50)
-    .send()
-    .await?;
-```
-
-### Conjunction Analysis
-
-```rust
-use chrono::{Utc, Duration};
-
-// Get conjunction risks
-let conjunctions = client.list_conjunctions()
-    .satellite_id("25544")
-    .threshold_km(5.0)
-    .limit(10)
-    .send()
-    .await?;
-
-for conj in conjunctions {
-    println!("TCA: {}", conj.tca);
-    println!("Miss distance: {:.3} km", conj.miss_distance_km);
-    println!("Probability: {:.2e}", conj.collision_probability);
-}
-```
-
-### Pattern Detection
-
-```rust
-// Detect maneuvers and anomalies
-let patterns = client.list_patterns()
-    .satellite_id("44832") // COSMOS-2542
-    .lookback_days(30)
-    .send()
-    .await?;
-
-for pattern in patterns {
-    println!("{}: {}", pattern.pattern_type, pattern.description);
-    println!("Confidence: {:.1}%", pattern.confidence * 100.0);
-}
-```
-
-### Trajectory Prediction
-
-```rust
-use chrono::{Utc, Duration};
-
-// Get predicted trajectory
-let trajectory = client.get_trajectory()
-    .satellite_id("25544")
-    .start(Utc::now())
-    .end(Utc::now() + Duration::hours(2))
-    .interval_sec(60)
-    .send()
-    .await?;
-
-for point in trajectory {
-    println!("{}: {:.2}, {:.2}", point.timestamp, point.lat, point.lon);
-}
-```
-
-## Planning API
-
-### Feasibility Analysis
-
-```rust
-use rotastellar::planning::AnalyzeRequest;
-
-// Analyze if orbital compute is viable
-let result = client.analyze_feasibility(AnalyzeRequest {
-    workload_type: "inference".to_string(),
-    compute_tflops: 10.0,
-    data_gb: 1.5,
-    latency_requirement_ms: Some(100.0),
-    orbit_altitude_km: 550.0,
-}).await?;
-
-println!("Feasible: {}", result.feasible);
-println!("Recommendation: {}", result.recommendation);
-```
-
-### Thermal Simulation
-
-```rust
-use rotastellar::planning::ThermalRequest;
-
-// Model heat rejection in orbit
-let thermal = client.simulate_thermal(ThermalRequest {
-    power_watts: 500.0,
-    orbit_altitude_km: 550.0,
-    radiator_area_m2: 2.0,
-    duration_hours: 24.0,
-}).await?;
-
-println!("Max temp: {}°C", thermal.max_temperature_c);
-println!("Min temp: {}°C", thermal.min_temperature_c);
-```
-
-### Latency Simulation
+Geographic position with altitude:
 
 ```rust
 use rotastellar::types::Position;
-use rotastellar::planning::LatencyRequest;
 
-// Model end-to-end latency
-let source = Position::new(37.7749, -122.4194); // San Francisco
-let dest = Position::new(51.5074, -0.1278);     // London
+// Create with validation
+let pos = Position::new(28.5729, -80.6490, 408.0)?;
 
-let latency = client.simulate_latency(LatencyRequest {
-    source,
-    destination: dest,
-    orbit_altitude_km: 550.0,
-    relay_count: 2,
-}).await?;
-
-println!("Total latency: {:.1} ms", latency.total_latency_ms);
+// Access fields
+println!("Latitude: {}", pos.latitude);
+println!("Longitude: {}", pos.longitude);
+println!("Altitude: {} km", pos.altitude_km);
 ```
-
-## Runtime API (Coming Q2 2026)
-
-```rust
-use rotastellar::runtime::{JobRequest, Constraints};
-
-// Submit inference job
-let job = client.submit_job(JobRequest {
-    model: "llama-70b".to_string(),
-    prompt: "...".to_string(),
-    constraints: Constraints {
-        latency_sla_ms: Some(200),
-        energy_budget_wh: Some(0.5),
-    },
-}).await?;
-
-// Get result
-let result = client.get_job_result(&job.id, 30).await?;
-println!("Response: {}", result.text);
-```
-
-## Pagination
-
-Handle large result sets with the `PaginatedResponse` type:
-
-```rust
-use rotastellar::types::PaginatedResponse;
-
-// Manual pagination
-let mut page = client.list_satellites()
-    .constellation("Starlink")
-    .limit(100)
-    .send()
-    .await?;
-
-println!("Page has {} items, has_more={}", page.items.len(), page.has_more);
-
-for sat in &page.items {
-    println!("{}", sat.name);
-}
-
-if page.has_more {
-    page = page.next_page().await?;
-}
-
-// Stream-based iteration (auto-fetches pages)
-use futures::StreamExt;
-
-let mut stream = client.list_satellites()
-    .constellation("Starlink")
-    .stream();
-
-while let Some(sat) = stream.next().await {
-    let sat = sat?;
-    println!("{}", sat.name);
-}
-```
-
-### PaginatedResponse Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `items` | `Vec<T>` | Current page of items |
-| `has_more` | `bool` | Whether more pages exist |
-| `total` | `Option<usize>` | Total count (if available) |
-| `limit` | `usize` | Page size |
-| `offset` | `usize` | Current offset |
+| `latitude` | `f64` | Latitude in degrees (-90 to 90) |
+| `longitude` | `f64` | Longitude in degrees (-180 to 180) |
+| `altitude_km` | `f64` | Altitude above sea level in km |
+
+### Orbit
+
+Keplerian orbital elements:
+
+```rust
+use rotastellar::types::Orbit;
+
+// Create an orbit (ISS-like)
+let orbit = Orbit::new(
+    6778.0,   // semi_major_axis_km
+    0.0001,   // eccentricity
+    51.6,     // inclination_deg
+    100.0,    // raan_deg
+    90.0,     // arg_periapsis_deg
+    0.0       // true_anomaly_deg
+)?;
+
+// Computed properties
+println!("Period: {:.1} minutes", orbit.orbital_period_minutes());
+println!("Apogee: {:.1} km", orbit.apogee_km());
+println!("Perigee: {:.1} km", orbit.perigee_km());
+println!("Mean motion: {:.2} rev/day", orbit.mean_motion());
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `semi_major_axis_km` | `f64` | Semi-major axis in km |
+| `eccentricity` | `f64` | Orbital eccentricity (0-1) |
+| `inclination_deg` | `f64` | Inclination in degrees (0-180) |
+| `raan_deg` | `f64` | Right ascension of ascending node |
+| `arg_periapsis_deg` | `f64` | Argument of periapsis |
+| `true_anomaly_deg` | `f64` | True anomaly |
+
+### Satellite
+
+Satellite information with optional orbit and position:
+
+```rust
+use rotastellar::types::{Satellite, Position, Orbit};
+
+let sat = Satellite::new("sat_123", 25544, "ISS")
+    .with_operator("NASA/Roscosmos")
+    .with_constellation("Space Station")
+    .with_position(Position::new(28.5729, -80.6490, 408.0)?)
+    .with_orbit(orbit);
+
+println!("Name: {}", sat.name);
+println!("NORAD ID: {}", sat.norad_id);
+if let Some(pos) = &sat.position {
+    println!("At: {}, {}", pos.latitude, pos.longitude);
+}
+```
+
+### TimeRange
+
+Time range for queries:
+
+```rust
+use rotastellar::types::TimeRange;
+
+// Create a 24-hour time range starting now
+let range = TimeRange::next_hours(24.0);
+println!("Start: {}", range.start);
+println!("End: {}", range.end);
+```
+
+## Configuration
+
+The SDK provides configuration utilities for when the HTTP client is available:
+
+```rust
+use rotastellar::{Config, ConfigBuilder};
+
+let config = Config::default();
+println!("Base URL: {}", config.base_url);
+println!("Timeout: {:?}", config.timeout);
+```
+
+## Authentication Utilities
+
+Validate and mask API keys:
+
+```rust
+use rotastellar::{validate_api_key, mask_api_key, Environment};
+
+// Validate an API key
+match validate_api_key(Some("rs_live_abc123")) {
+    Ok(env) => println!("Valid key for {:?} environment", env),
+    Err(e) => println!("Invalid: {}", e),
+}
+
+// Mask a key for logging
+let masked = mask_api_key("rs_live_abc123def456");
+println!("Masked: {}", masked);  // rs_live_abc...
+```
 
 ## Error Handling
 
 ```rust
-use rotastellar::RotaStellarClient;
-use rotastellar::error::{Error, ApiError};
+use rotastellar::error::{RotaStellarError, ValidationError};
+use rotastellar::types::Position;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = RotaStellarClient::new("rs_...")?;
+fn create_position() -> Result<Position, RotaStellarError> {
+    // This will fail validation (latitude > 90)
+    let pos = Position::new(91.0, 0.0, 0.0)?;
+    Ok(pos)
+}
 
-    match client.get_satellite("INVALID-ID").await {
-        Ok(sat) => println!("Found: {}", sat.name),
-        Err(Error::NotFound(msg)) => println!("Not found: {}", msg),
-        Err(Error::RateLimit { retry_after }) => {
-            println!("Rate limited. Retry after {}s", retry_after);
-        }
-        Err(Error::Authentication(msg)) => println!("Auth error: {}", msg),
-        Err(Error::Validation(msg)) => println!("Invalid request: {}", msg),
-        Err(Error::Api(ApiError { code, message })) => {
-            println!("API error {}: {}", code, message);
-        }
-        Err(e) => println!("Other error: {}", e),
+match create_position() {
+    Ok(pos) => println!("Created: {:?}", pos),
+    Err(RotaStellarError::Validation(e)) => {
+        println!("Validation error on '{}': {}", e.field, e.message);
     }
-
-    Ok(())
+    Err(e) => println!("Error: {}", e),
 }
 ```
 
-## Blocking Client
+### Error Types
 
-For non-async contexts:
+| Error | Description |
+|-------|-------------|
+| `RotaStellarError::Validation` | Input validation failed |
+| `RotaStellarError::Authentication` | API key issues |
+| `RotaStellarError::Api` | API returned an error |
+| `RotaStellarError::Network` | Network connectivity issues |
 
-```rust
-use rotastellar::blocking::RotaStellarClient;
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = RotaStellarClient::new("rs_...")?;
-
-    let iss = client.get_satellite("25544")?;
-    println!("ISS: {}, {}", iss.position.lat, iss.position.lon);
-
-    Ok(())
-}
-```
-
-## Distributed Compute API (Coming Q1 2026)
-
-The `rotastellar-distributed` crate enables Earth-space AI coordination:
-
-```bash
-cargo add rotastellar-distributed
-```
-
-### Federated Learning
+## Constants
 
 ```rust
-use rotastellar_distributed::{FederatedClient, CompressionConfig, CompressionMethod};
+use rotastellar::{EARTH_RADIUS_KM, EARTH_MU};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Configure gradient compression (100x reduction)
-    let compression = CompressionConfig::new()
-        .method(CompressionMethod::TopKQuantized)
-        .k_ratio(0.01)
-        .quantization_bits(8)
-        .error_feedback(true);
-
-    // Initialize client on orbital node
-    let client = FederatedClient::builder()
-        .api_key("rs_...")
-        .node_id("orbital-3")
-        .node_type("orbital")
-        .compression(compression)
-        .build()?;
-
-    // Sync during ground pass
-    client.sync(&gradients, "high").await?;
-
-    Ok(())
-}
+println!("Earth radius: {} km", EARTH_RADIUS_KM);  // 6378.137
+println!("Earth GM: {} km³/s²", EARTH_MU);         // 398600.4418
 ```
 
-<Info>
-  See the [Distributed Compute documentation](/distributed/overview) for full API reference.
-</Info>
+## Serde Support
 
-## Type Definitions
-
-All types are fully documented:
+All types implement `Serialize` and `Deserialize`:
 
 ```rust
-use rotastellar::types::{Position, Orbit, Satellite};
+use rotastellar::types::Position;
+use serde_json;
 
-let sat = client.get_satellite("25544").await?;
+let pos = Position::new(28.5729, -80.6490, 408.0)?;
 
-// All fields are strongly typed
-let lat: f64 = sat.position.lat;
-let lon: f64 = sat.position.lon;
-let altitude_km: f64 = sat.position.altitude_km;
-let velocity_km_s: f64 = sat.position.velocity_km_s;
+// Serialize
+let json = serde_json::to_string(&pos)?;
+println!("{}", json);
+
+// Deserialize
+let parsed: Position = serde_json::from_str(&json)?;
 ```
+
+## Coming Soon
+
+The following features are planned for future releases:
+
+- **HTTP Client** — Full API client with async support
+- **Blocking Client** — Synchronous API for non-async contexts
+- **Streaming** — Real-time satellite position updates
+- **TLE Parsing** — Two-line element set parsing and propagation
 
 ## Source Code
 

@@ -49,7 +49,7 @@ const client = new RotaStellarClient();
 
 // Track a satellite
 const iss = await client.getSatellite('25544');
-console.log(`ISS: ${iss.position?.lat}, ${iss.position?.lon}`);
+console.log(`ISS: ${iss.position?.latitude}, ${iss.position?.longitude}`);
 ```
 
 ## Client Configuration
@@ -74,12 +74,12 @@ const client = new RotaStellarClient({
 // Get satellite by NORAD ID
 const sat = await client.getSatellite('25544'); // ISS
 console.log(`Name: ${sat.name}`);
-console.log(`Position: ${sat.position?.lat}, ${sat.position?.lon}`);
+console.log(`Position: ${sat.position?.latitude}, ${sat.position?.longitude}`);
 console.log(`Altitude: ${sat.position?.altitudeKm} km`);
 
 // Get position only
 const pos = await client.getSatellitePosition('25544');
-console.log(`Velocity: ${pos.velocityKmS} km/s`);
+console.log(`Position: ${pos.latitude}, ${pos.longitude} at ${pos.altitudeKm} km`);
 ```
 
 ### List Satellites
@@ -148,7 +148,7 @@ const trajectory = await client.getTrajectory({
 });
 
 for (const point of trajectory) {
-  console.log(`${point.timestamp}: ${point.lat.toFixed(2)}, ${point.lon.toFixed(2)}`);
+  console.log(`${point.timestamp}: ${point.latitude.toFixed(2)}, ${point.longitude.toFixed(2)}`);
 }
 ```
 
@@ -282,8 +282,8 @@ const pos: Position = sat.position!;
 const orbit: Orbit = sat.orbit!;
 
 // Full autocomplete and type checking
-console.log(pos.lat);         // number
-console.log(pos.lon);         // number
+console.log(pos.latitude);    // number
+console.log(pos.longitude);   // number
 console.log(pos.altitudeKm);  // number
 console.log(orbit.periodMin); // number
 ```
@@ -352,26 +352,26 @@ npm install @rotastellar/distributed
 ### Federated Learning
 
 ```typescript
-import { FederatedClient, CompressionConfig } from '@rotastellar/distributed';
+import { FederatedClient, CompressionConfig, CompressionMethod } from '@rotastellar/distributed';
 
 // Configure gradient compression (100x reduction)
-const compression = new CompressionConfig({
-  method: 'topk_quantized',
+const compression: CompressionConfig = {
+  method: CompressionMethod.TOP_K_QUANTIZED,
   kRatio: 0.01,
   quantizationBits: 8,
   errorFeedback: true
-});
+};
 
 // Initialize client on orbital node
 const client = new FederatedClient({
-  apiKey: 'rs_...',
   nodeId: 'orbital-3',
   nodeType: 'orbital',
   compression
 });
 
-// Sync during ground pass
-await client.sync(gradients, { priority: 'high' });
+// Compute and compress gradients for transmission
+const gradients = client.computeGradients(modelParams, localData);
+const compressed = client.compress(gradients);
 ```
 
 <Info>

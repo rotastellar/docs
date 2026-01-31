@@ -9,7 +9,7 @@ This guide will get you from zero to your first API call in under 5 minutes.
 
 ## 1. Get an API Key
 
-<Card title="Request Early Access" icon="rocket" href="https://rotastellar.com/early-access/">
+<Card title="Request API Key" icon="rocket" href="https://rotastellar.com/developers">
   Sign up to receive your API credentials.
 </Card>
 
@@ -33,43 +33,40 @@ cargo add rotastellar
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_your_api_key")
+client = RotaStellarClient(api_key="rs_your_api_key")
 
 # Get ISS position
-iss = client.intelligence.satellite("ISS")
-pos = iss.position()
+iss = client.get_satellite("25544")  # ISS NORAD ID
 
-print(f"ISS Location: {pos.lat}, {pos.lon}")
-print(f"Altitude: {pos.altitude_km} km")
+print(f"ISS Location: {iss.position.latitude}, {iss.position.longitude}")
+print(f"Altitude: {iss.position.altitude_km} km")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_your_api_key' });
+const client = new RotaStellarClient({ apiKey: 'rs_your_api_key' });
 
 // Get ISS position
-const iss = await client.intelligence.satellite('ISS');
-const pos = await iss.position();
+const iss = await client.getSatellite('25544');  // ISS NORAD ID
 
-console.log(`ISS Location: ${pos.lat}, ${pos.lon}`);
-console.log(`Altitude: ${pos.altitudeKm} km`);
+console.log(`ISS Location: ${iss.position?.latitude}, ${iss.position?.longitude}`);
+console.log(`Altitude: ${iss.position?.altitudeKm} km`);
 ```
 
 ```rust Rust
-use rotastellar::RotaStellar;
+use rotastellar::types::{Position, Orbit};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = RotaStellar::new("rs_your_api_key")?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Rust SDK provides types only (HTTP client coming soon)
+    // Use Python or Node.js SDK for full API access
 
-    // Get ISS position
-    let iss = client.intelligence().satellite("ISS").await?;
-    let pos = iss.position().await?;
+    // Create a position type for ISS-like coordinates
+    let pos = Position::new(41.264, -95.123, 420.5)?;
 
-    println!("ISS Location: {}, {}", pos.lat, pos.lon);
+    println!("Location: {}, {}", pos.latitude, pos.longitude);
     println!("Altitude: {} km", pos.altitude_km);
 
     Ok(())
