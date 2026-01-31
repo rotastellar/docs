@@ -23,7 +23,7 @@
   ],
   "topbarCtaButton": {
     "name": "Get API Key",
-    "url": "https://rotastellar.com/early-access/"
+    "url": "https://rotastellar.com/developers"
   },
   "tabs": [
     {
@@ -37,9 +37,9 @@
   ],
   "anchors": [
     {
-      "name": "Early Access",
+      "name": "Developers",
       "icon": "rocket",
-      "url": "https://rotastellar.com/early-access/"
+      "url": "https://rotastellar.com/developers"
     },
     {
       "name": "GitHub",
@@ -125,6 +125,9 @@
   },
   "modeToggle": {
     "default": "dark"
+  },
+  "styling": {
+    "rounded": ".375rem"
   },
   "api": {
     "baseUrl": "https://api.rotastellar.com/v1",
