@@ -321,7 +321,269 @@ components:
             message:
               type: string
 
+    GroundStation:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "gs_svalbard"
+        name:
+          type: string
+          example: "Svalbard"
+        lat:
+          type: number
+          example: 78.23
+        lon:
+          type: number
+          example: 15.39
+        provider:
+          type: string
+          example: "KSAT"
+        capabilities:
+          type: array
+          items:
+            type: string
+          example: ["s-band", "x-band", "ka-band"]
+
+    VisibilityResult:
+      type: object
+      properties:
+        satellite_id:
+          type: string
+        satellite_position:
+          $ref: '#/components/schemas/Position'
+        ground_stations:
+          type: array
+          items:
+            type: object
+            properties:
+              station:
+                $ref: '#/components/schemas/GroundStation'
+              visible:
+                type: boolean
+              elevation_deg:
+                type: number
+              slant_range_km:
+                type: number
+              azimuth_deg:
+                type: number
+        visible_count:
+          type: integer
+        total_stations:
+          type: integer
+
+    SatelliteFeasibilityResult:
+      type: object
+      properties:
+        satellite:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            altitude_km:
+              type: number
+            inclination_deg:
+              type: number
+            period_min:
+              type: number
+        feasibility:
+          type: object
+          properties:
+            score:
+              type: integer
+              minimum: 0
+              maximum: 100
+            grade:
+              type: string
+              enum: [A, B, C, D]
+            viable:
+              type: boolean
+        orbital_environment:
+          type: object
+          properties:
+            eclipse_fraction:
+              type: number
+            sunlit_minutes_per_orbit:
+              type: number
+            thermal_cycle_stress:
+              type: string
+            radiation_level:
+              type: string
+        power_budget:
+          type: object
+          properties:
+            avg_power_available_w:
+              type: number
+            eclipse_power_w:
+              type: number
+            peak_solar_w:
+              type: number
+        thermal_budget:
+          type: object
+          properties:
+            max_temp_c:
+              type: number
+            min_temp_c:
+              type: number
+            safe_operating_range_c:
+              type: array
+              items:
+                type: number
+        communication:
+          type: object
+          properties:
+            passes_per_day:
+              type: integer
+            avg_pass_duration_min:
+              type: number
+            daily_contact_min:
+              type: number
+            round_trip_latency_ms:
+              type: number
+        issues:
+          type: array
+          items:
+            type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    SatelliteLatencyResult:
+      type: object
+      properties:
+        satellite:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            altitude_km:
+              type: number
+        observer:
+          type: object
+          properties:
+            lat:
+              type: number
+            lon:
+              type: number
+        direct_link:
+          type: object
+          properties:
+            slant_range_km:
+              type: number
+            propagation_delay_ms:
+              type: number
+            one_way_latency_ms:
+              type: number
+            round_trip_latency_ms:
+              type: number
+        ground_relay:
+          type: object
+          nullable: true
+          properties:
+            station:
+              type: string
+            total_latency_ms:
+              type: number
+        comparison:
+          type: object
+          properties:
+            terrestrial_latency_ms:
+              type: number
+            satellite_overhead_ms:
+              type: number
+            overhead_percent:
+              type: number
+        visible_ground_stations:
+          type: integer
+
+    Pass:
+      type: object
+      properties:
+        aos:
+          type: string
+          format: date-time
+          description: Acquisition of signal time
+        los:
+          type: string
+          format: date-time
+          description: Loss of signal time
+        duration_min:
+          type: number
+        max_elevation_deg:
+          type: number
+        aos_azimuth_deg:
+          type: number
+        los_azimuth_deg:
+          type: number
+
 paths:
+  /satellites/active:
+    get:
+      summary: Get active satellites
+      description: Bulk load active satellites for visualization. Returns satellites from CelesTrak groups.
+      operationId: getActiveSatellites
+      tags: [Intelligence]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+          description: Maximum number of satellites to return
+        - name: groups
+          in: query
+          schema:
+            type: string
+            default: "visual,stations,active"
+          description: Comma-separated CelesTrak groups to fetch from
+      responses:
+        '200':
+          description: List of active satellites with current positions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Satellite'
+                  count:
+                    type: integer
+                  groups:
+                    type: array
+                    items:
+                      type: string
+                  data_source:
+                    type: string
+
+  /ground-stations:
+    get:
+      summary: List ground stations
+      description: Get all available ground stations in the network
+      operationId: listGroundStations
+      tags: [Intelligence]
+      responses:
+        '200':
+          description: List of ground stations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GroundStation'
+                  count:
+                    type: integer
+
   /planning/analyze:
     post:
       summary: Analyze feasibility
@@ -514,6 +776,223 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Satellite'
+        '404':
+          description: Satellite not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /satellites/{satellite_id}/position:
+    get:
+      summary: Get satellite position
+      description: Get current position of a satellite
+      operationId: getSatellitePosition
+      tags: [Intelligence]
+      parameters:
+        - name: satellite_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Current position
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+        '404':
+          description: Satellite not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /satellites/{satellite_id}/orbit:
+    get:
+      summary: Get satellite orbit
+      description: Get orbital parameters of a satellite
+      operationId: getSatelliteOrbit
+      tags: [Intelligence]
+      parameters:
+        - name: satellite_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Orbital parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Orbit'
+        '404':
+          description: Satellite not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /satellites/{satellite_id}/visibility:
+    get:
+      summary: Get ground station visibility
+      description: Check which ground stations can currently see the satellite
+      operationId: getSatelliteVisibility
+      tags: [Intelligence]
+      parameters:
+        - name: satellite_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Visibility from all ground stations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisibilityResult'
+        '404':
+          description: Satellite not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /satellites/{satellite_id}/feasibility:
+    get:
+      summary: Analyze compute feasibility
+      description: Evaluate if a satellite's orbit is suitable for orbital compute workloads
+      operationId: getSatelliteFeasibility
+      tags: [Planning]
+      parameters:
+        - name: satellite_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: power_w
+          in: query
+          schema:
+            type: number
+            default: 100
+          description: Workload power requirement in watts
+        - name: thermal_w
+          in: query
+          schema:
+            type: number
+            default: 30
+          description: Thermal dissipation requirement in watts
+      responses:
+        '200':
+          description: Feasibility analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatelliteFeasibilityResult'
+        '404':
+          description: Satellite not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /satellites/{satellite_id}/latency:
+    get:
+      summary: Analyze communication latency
+      description: Calculate latency between satellite and a ground observer
+      operationId: getSatelliteLatency
+      tags: [Planning]
+      parameters:
+        - name: satellite_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lat
+          in: query
+          schema:
+            type: number
+            default: 37.7749
+          description: Observer latitude
+        - name: lon
+          in: query
+          schema:
+            type: number
+            default: -122.4194
+          description: Observer longitude
+      responses:
+        '200':
+          description: Latency analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SatelliteLatencyResult'
+        '404':
+          description: Satellite not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /satellites/{satellite_id}/passes:
+    get:
+      summary: Predict passes
+      description: Predict when satellite will pass over an observer location
+      operationId: getSatellitePasses
+      tags: [Intelligence]
+      parameters:
+        - name: satellite_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+          description: Observer latitude
+        - name: lon
+          in: query
+          required: true
+          schema:
+            type: number
+          description: Observer longitude
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+            maximum: 168
+          description: Prediction window in hours
+      responses:
+        '200':
+          description: Pass predictions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  satellite_id:
+                    type: string
+                  observer:
+                    type: object
+                    properties:
+                      lat:
+                        type: number
+                      lon:
+                        type: number
+                  prediction_window_hours:
+                    type: integer
+                  passes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Pass'
+                  count:
+                    type: integer
         '404':
           description: Satellite not found
           content:
