@@ -7,7 +7,7 @@ description: "Workload orchestration across Earth and orbital nodes"
 
 <Warning>
   **Coming Q2 2026** — This is a design preview.
-  [Request early access](https://rotastellar.com/early-access/) to be notified when available.
+  [Request early access](https://rotastellar.com/developers) to be notified when available.
 </Warning>
 
 ## Overview
@@ -52,9 +52,9 @@ The Orbit Scheduler uses three models to make placement decisions:
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 job = client.runtime.submit(
     model="llama-70b",
@@ -76,9 +76,9 @@ print(f"Reason: {job.placement_reason}")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 const job = await client.runtime.submit({
   model: 'llama-70b',

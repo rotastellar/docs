@@ -7,7 +7,7 @@ description: "Execution primitives for computing beyond Earth"
 
 <Warning>
   **Coming Q2 2026** — The Orbital Runtime is currently in development.
-  This documentation is a design preview. [Request early access](https://rotastellar.com/early-access/)
+  This documentation is a design preview. [Request early access](https://rotastellar.com/developers)
   to be notified when it's available.
 </Warning>
 
@@ -74,9 +74,9 @@ Your application connects to the RotaStellar Orbital Runtime, which orchestrates
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 # Submit inference job with constraints
 job = client.runtime.submit(
@@ -102,9 +102,9 @@ print(f"Energy used: {result.energy_wh} Wh")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 const job = await client.runtime.submit({
   model: 'llama-70b',
@@ -196,6 +196,6 @@ client.runtime.configure(
 
 ## Get Notified
 
-<Card title="Request Early Access" icon="bell" href="https://rotastellar.com/early-access/">
+<Card title="Request Early Access" icon="bell" href="https://rotastellar.com/developers">
   Be the first to know when Orbital Runtime is available.
 </Card>

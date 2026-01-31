@@ -11,7 +11,7 @@ The RotaStellar API uses API keys for authentication. All requests must include 
 
 <Steps>
   <Step title="Request Access">
-    Sign up for [early access](https://rotastellar.com/early-access/) to receive your API credentials.
+    Sign up for [early access](https://rotastellar.com/developers) to receive your API credentials.
   </Step>
   <Step title="Receive Credentials">
     You'll receive an email with your API key (starts with `rs_`).
@@ -38,21 +38,21 @@ curl https://api.rotastellar.com/v1/satellites/ISS \
 ```
 
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
 # From parameter
-client = RotaStellar(api_key="rs_your_api_key")
+client = RotaStellarClient(api_key="rs_your_api_key")
 
 # Or from environment variable
 # export ROTASTELLAR_API_KEY=rs_your_api_key
-client = RotaStellar()  # Reads from env
+client = RotaStellarClient()  # Reads from env
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
 // From parameter
-const client = new RotaStellar({ apiKey: 'rs_your_api_key' });
+const client = new RotaStellarClient({ apiKey: 'rs_your_api_key' });
 
 // Or from environment variable
 // export ROTASTELLAR_API_KEY=rs_your_api_key

@@ -32,9 +32,9 @@ Planning Tools help you evaluate the feasibility of orbital compute deployments 
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 # Comprehensive feasibility analysis
 result = client.planning.analyze(
@@ -51,9 +51,9 @@ print(f"Power required: {result.power_kw} kW")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 const result = await client.planning.analyze({
   workload: 'ai_inference',

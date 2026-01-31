@@ -7,7 +7,7 @@ description: "Energy and thermal-aware inference execution"
 
 <Warning>
   **Coming Q2 2026** — This is a design preview.
-  [Request early access](https://rotastellar.com/early-access/) to be notified when available.
+  [Request early access](https://rotastellar.com/developers) to be notified when available.
 </Warning>
 
 ## Overview
@@ -52,9 +52,9 @@ The Adaptive Runtime dynamically adjusts inference execution to stay within ener
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 result = client.runtime.generate(
     model="llama-70b",
@@ -72,9 +72,9 @@ print(f"Adaptations applied: {result.adaptations}")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 const result = await client.runtime.generate({
   model: 'llama-70b',

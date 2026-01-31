@@ -56,9 +56,9 @@ curl -X POST https://api.rotastellar.com/v1/runtime/jobs \
 ```
 
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 job = client.runtime.submit(
     model="llama-70b",
@@ -75,9 +75,9 @@ print(result.text)
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 const job = await client.runtime.submit({
   model: 'llama-70b',

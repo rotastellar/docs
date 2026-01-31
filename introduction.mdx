@@ -9,7 +9,7 @@ The RotaStellar API provides programmatic access to orbital compute infrastructu
 
 <Info>
   **Early Access** — The API is currently in early access.
-  [Request an API key](https://rotastellar.com/early-access/) to get started.
+  [Request an API key](https://rotastellar.com/developers) to get started.
 </Info>
 
 ## Platform Overview
@@ -40,9 +40,9 @@ The API is organized around three product layers:
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 # Check feasibility of orbital compute
 result = client.planning.analyze(
@@ -55,9 +55,9 @@ print(f"Estimated cost: ${result.cost_monthly}/mo")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 // Check feasibility of orbital compute
 const result = await client.planning.analyze({
@@ -116,6 +116,6 @@ curl https://api.rotastellar.com/v1/satellites \
   -H "Authorization: Bearer rs_your_api_key"
 ```
 
-<Card title="Get your API key" icon="key" href="https://rotastellar.com/early-access/">
+<Card title="Get your API key" icon="key" href="https://rotastellar.com/developers">
   Request early access to receive your API credentials.
 </Card>

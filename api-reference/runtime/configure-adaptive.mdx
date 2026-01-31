@@ -56,9 +56,9 @@ curl -X POST https://api.rotastellar.com/v1/runtime/configure \
 ```
 
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 client.runtime.configure(
     adaptive={
@@ -77,9 +77,9 @@ client.runtime.configure(
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 await client.runtime.configure({
   adaptive: {

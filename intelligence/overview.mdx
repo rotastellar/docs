@@ -32,52 +32,49 @@ Orbital Intelligence provides real-time situational awareness for objects in Ear
 
 <CodeGroup>
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 # Track the International Space Station
-iss = client.intelligence.satellite("ISS")
-pos = iss.position()
+iss = client.get_satellite("25544")  # ISS NORAD ID
 
-print(f"Location: {pos.lat}, {pos.lon}")
-print(f"Altitude: {pos.altitude_km} km")
-print(f"Velocity: {pos.velocity_km_s} km/s")
+print(f"Location: {iss.position.latitude}, {iss.position.longitude}")
+print(f"Altitude: {iss.position.altitude_km} km")
 
 # Check for upcoming conjunctions
-conjunctions = client.intelligence.conjunctions(
-    satellite="ISS",
+conjunctions = client.list_conjunctions(
+    satellite_id="25544",
     threshold_km=5.0,
-    days_ahead=7
+    limit=10
 )
 
 for conj in conjunctions:
-    print(f"TCA: {conj.tca}")
-    print(f"Miss distance: {conj.miss_km} km")
-    print(f"Probability: {conj.probability}")
+    print(f"TCA: {conj['tca']}")
+    print(f"Miss distance: {conj['miss_distance_km']} km")
+    print(f"Probability: {conj['collision_probability']}")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
 // Track ISS
-const iss = await client.intelligence.satellite('ISS');
-const pos = await iss.position();
+const iss = await client.getSatellite('25544');
 
-console.log(`Location: ${pos.lat}, ${pos.lon}`);
-console.log(`Altitude: ${pos.altitudeKm} km`);
+console.log(`Location: ${iss.position?.latitude}, ${iss.position?.longitude}`);
+console.log(`Altitude: ${iss.position?.altitudeKm} km`);
 
 // Check conjunctions
-const conjunctions = await client.intelligence.conjunctions({
-  satellite: 'ISS',
+const conjunctions = await client.listConjunctions({
+  satelliteId: '25544',
   thresholdKm: 5.0,
-  daysAhead: 7
+  limit: 10
 });
 
 for (const conj of conjunctions) {
-  console.log(`TCA: ${conj.tca}, Miss: ${conj.missKm} km`);
+  console.log(`TCA: ${conj.tca}, Miss: ${conj.miss_distance_km} km`);
 }
 ```
 
@@ -115,14 +112,13 @@ Track your entire satellite constellation and monitor health:
 
 ```python
 # Get all satellites in your constellation
-constellation = client.intelligence.satellites(
+constellation = client.list_satellites(
     operator="YourCompany",
     constellation="YourConstellation"
 )
 
 for sat in constellation:
-    pos = sat.position()
-    print(f"{sat.name}: {pos.altitude_km}km, {pos.phase}")
+    print(f"{sat.name}: {sat.position.altitude_km}km")
 ```
 
 ### Collision Avoidance
@@ -130,11 +126,18 @@ for sat in constellation:
 Get alerts when conjunction risks exceed thresholds:
 
 ```python
-# Set up conjunction monitoring
-watch = client.intelligence.watch(
-    satellites=["SAT-001", "SAT-002", "SAT-003"],
-    threshold_km=1.0,
-    callback_url="https://your-app.com/alerts"
+# Set up conjunction monitoring via webhook
+# See /intelligence/webhooks for full setup
+import requests
+
+requests.post(
+    "https://api.rotastellar.com/v1/conjunctions/watch",
+    headers={"Authorization": "Bearer rs_your_api_key"},
+    json={
+        "satellites": ["SAT-001", "SAT-002", "SAT-003"],
+        "threshold_km": 1.0,
+        "webhook_url": "https://your-app.com/alerts"
+    }
 )
 ```
 
@@ -143,14 +146,15 @@ watch = client.intelligence.watch(
 Detect unexpected maneuvers or behavior changes:
 
 ```python
-anomalies = client.intelligence.patterns.anomalies(
-    satellite="TARGET-SAT",
+anomalies = client.list_patterns(
+    satellite_id="TARGET-SAT",
+    type="anomaly",
     lookback_days=30
 )
 
 for anomaly in anomalies:
-    print(f"{anomaly.timestamp}: {anomaly.type}")
-    print(f"Description: {anomaly.description}")
+    print(f"{anomaly['timestamp']}: {anomaly['type']}")
+    print(f"Description: {anomaly['description']}")
 ```
 
 ## Rate Limits
