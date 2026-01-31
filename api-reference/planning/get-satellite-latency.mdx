@@ -1,0 +1,87 @@
+---
+title: Get Satellite Latency
+api: GET /v1/satellites/{satellite_id}/latency
+description: "Calculate communication latency between satellite and a ground observer"
+---
+
+## Request
+
+<ParamField path="satellite_id" type="string" required>
+  NORAD catalog ID or common name (e.g., "25544" or "ISS")
+</ParamField>
+
+<ParamField query="lat" type="number" default="37.7749">
+  Observer latitude in degrees
+</ParamField>
+
+<ParamField query="lon" type="number" default="-122.4194">
+  Observer longitude in degrees
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://api.rotastellar.com/v1/satellites/25544/latency?lat=40.7128&lon=-74.0060" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellarClient
+
+client = RotaStellarClient(api_key="rs_...")
+
+# Calculate latency from New York
+response = client.http.get("/satellites/25544/latency", {
+    "lat": 40.7128,
+    "lon": -74.0060
+})
+
+print(f"Round-trip latency: {response['direct_link']['round_trip_latency_ms']:.1f} ms")
+print(f"Compared to terrestrial: +{response['comparison']['overhead_percent']:.0f}%")
+```
+
+```typescript Node.js
+import { RotaStellarClient } from '@rotastellar/sdk';
+
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
+
+const response = await client.http.get('/satellites/25544/latency', {
+  lat: 40.7128,
+  lon: -74.0060
+});
+
+console.log(`Round-trip latency: ${response.direct_link.round_trip_latency_ms.toFixed(1)} ms`);
+console.log(`Compared to terrestrial: +${response.comparison.overhead_percent.toFixed(0)}%`);
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "satellite": {
+    "id": "25544",
+    "name": "ISS (ZARYA)",
+    "altitude_km": 420
+  },
+  "observer": {
+    "lat": 40.7128,
+    "lon": -74.0060
+  },
+  "direct_link": {
+    "slant_range_km": 892.4,
+    "propagation_delay_ms": 2.98,
+    "one_way_latency_ms": 4.5,
+    "round_trip_latency_ms": 9.0
+  },
+  "ground_relay": {
+    "station": "gs_wallops",
+    "total_latency_ms": 15.2
+  },
+  "comparison": {
+    "terrestrial_latency_ms": 45,
+    "satellite_overhead_ms": -36,
+    "overhead_percent": -80
+  },
+  "visible_ground_stations": 4
+}
+```
+</ResponseExample>

@@ -33,30 +33,39 @@ curl "https://api.rotastellar.com/v1/satellites?constellation=Starlink&limit=100
 ```
 
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
-starlinks = client.intelligence.satellites(
+starlinks = client.list_satellites(
     constellation="Starlink",
     limit=100
 )
 
-for sat in starlinks:
+for sat in starlinks.items:
+    print(sat.name)
+
+# Auto-pagination
+for sat in client.list_satellites(constellation="Starlink"):
     print(sat.name)
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
-const starlinks = await client.intelligence.satellites({
+const starlinks = await client.listSatellites({
   constellation: 'Starlink',
   limit: 100
 });
 
-for (const sat of starlinks) {
+for (const sat of starlinks.items) {
+  console.log(sat.name);
+}
+
+// Auto-pagination
+for await (const sat of client.listSatellites({ constellation: 'Starlink' })) {
   console.log(sat.name);
 }
 ```

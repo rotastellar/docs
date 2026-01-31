@@ -1,0 +1,73 @@
+---
+title: Get Active Satellites
+api: GET /v1/satellites/active
+description: "Bulk load active satellites for visualization"
+---
+
+## Request
+
+<ParamField query="limit" type="integer" default="100">
+  Maximum number of satellites to return (max: 500)
+</ParamField>
+
+<ParamField query="groups" type="string" default="visual,stations,active">
+  Comma-separated CelesTrak groups to fetch from
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://api.rotastellar.com/v1/satellites/active?limit=200" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellarClient
+
+client = RotaStellarClient(api_key="rs_...")
+
+# Get active satellites for visualization
+satellites = client.list_satellites(limit=200)
+for sat in satellites.items:
+    print(f"{sat.name}: {sat.position.latitude}, {sat.position.longitude}")
+```
+
+```typescript Node.js
+import { RotaStellarClient } from '@rotastellar/sdk';
+
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
+
+const satellites = await client.listSatellites({ limit: 200 });
+for (const sat of satellites.items) {
+  console.log(`${sat.name}: ${sat.position?.latitude}, ${sat.position?.longitude}`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "items": [
+    {
+      "id": "25544",
+      "name": "ISS (ZARYA)",
+      "position": {
+        "lat": 41.264,
+        "lon": -95.123,
+        "altitude_km": 420.5,
+        "velocity_km_s": 7.66,
+        "timestamp": "2026-01-21T12:00:00Z"
+      },
+      "orbit": {
+        "inclination_deg": 51.64,
+        "period_min": 92.9,
+        "apogee_km": 422,
+        "perigee_km": 418
+      }
+    }
+  ],
+  "count": 200,
+  "groups": ["visual", "stations", "active"],
+  "data_source": "celestrak"
+}
+```
+</ResponseExample>

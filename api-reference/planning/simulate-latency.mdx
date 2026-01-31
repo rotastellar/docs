@@ -39,27 +39,40 @@ curl -X POST https://api.rotastellar.com/v1/planning/latency \
 ```
 
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
+from rotastellar.types import Position
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
-latency = client.planning.latency(
-    orbit="LEO-550",
-    ground_stations=["us-west", "us-east", "europe", "asia"],
-    include_isl=True
+source = Position(latitude=37.7749, longitude=-122.4194)  # San Francisco
+dest = Position(latitude=51.5074, longitude=-0.1278)      # London
+
+latency = client.simulate_latency(
+    source=source,
+    destination=dest,
+    orbit_altitude_km=550,
+    relay_count=2
 )
+
+print(f"Total latency: {latency['total_latency_ms']:.1f} ms")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient, Position } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
-const latency = await client.planning.latency({
-  orbit: 'LEO-550',
-  groundStations: ['us-west', 'us-east', 'europe', 'asia'],
-  includeIsl: true
+const source = new Position(37.7749, -122.4194); // San Francisco
+const dest = new Position(51.5074, -0.1278);     // London
+
+const latency = await client.simulateLatency({
+  source,
+  destination: dest,
+  orbitAltitudeKm: 550,
+  relayCount: 2
 });
+
+console.log(`Total latency: ${latency.total_latency_ms?.toFixed(1)} ms`);
 ```
 </RequestExample>
 

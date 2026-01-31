@@ -224,15 +224,10 @@ console.log(result.text);
 
 ## Pagination
 
-Handle large result sets:
+Handle large result sets with the `PaginatedResponse` class:
 
 ```typescript
-// Automatic pagination with async iteration
-for await (const sat of client.listSatellitesPaginated({
-  constellation: 'Starlink'
-})) {
-  console.log(sat.name);
-}
+import { PaginatedResponse } from '@rotastellar/sdk';
 
 // Manual pagination
 let page = await client.listSatellites({
@@ -240,13 +235,31 @@ let page = await client.listSatellites({
   limit: 100
 });
 
-while (page.hasMore) {
-  for (const sat of page.items) {
-    console.log(sat.name);
-  }
+console.log(`Page has ${page.items.length} items, hasMore=${page.hasMore}`);
+
+for (const sat of page.items) {
+  console.log(sat.name);
+}
+
+if (page.hasMore) {
   page = await page.nextPage();
 }
+
+// Automatic pagination with async iteration
+for await (const sat of client.listSatellites({ constellation: 'Starlink' })) {
+  console.log(sat.name);
+}
 ```
+
+### PaginatedResponse Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `items` | `T[]` | Current page of items |
+| `hasMore` | `boolean` | Whether more pages exist |
+| `total` | `number \| undefined` | Total count (if available) |
+| `limit` | `number` | Page size |
+| `offset` | `number` | Current offset |
 
 ## TypeScript Support
 

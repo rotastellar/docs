@@ -1,0 +1,94 @@
+---
+title: Get Trajectory
+api: GET /v1/satellites/{satellite_id}/trajectory
+description: "Get predicted trajectory for a satellite over a time period"
+---
+
+## Request
+
+<ParamField path="satellite_id" type="string" required>
+  NORAD catalog ID or common name (e.g., "25544" or "ISS")
+</ParamField>
+
+<ParamField query="start" type="string">
+  Start time in ISO 8601 format (default: now)
+</ParamField>
+
+<ParamField query="end" type="string">
+  End time in ISO 8601 format (default: start + 2 hours)
+</ParamField>
+
+<ParamField query="interval_sec" type="integer" default="60">
+  Time interval between trajectory points in seconds
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://api.rotastellar.com/v1/satellites/25544/trajectory?interval_sec=30" \
+  -H "Authorization: Bearer rs_your_api_key"
+```
+
+```python Python
+from rotastellar import RotaStellarClient
+from datetime import datetime, timedelta
+
+client = RotaStellarClient(api_key="rs_...")
+
+# Get 2-hour trajectory with 1-minute intervals
+trajectory = client.get_trajectory(
+    satellite_id="25544",
+    start=datetime.utcnow().isoformat(),
+    end=(datetime.utcnow() + timedelta(hours=2)).isoformat(),
+    interval_sec=60
+)
+
+for point in trajectory:
+    print(f"{point['timestamp']}: {point['lat']:.2f}, {point['lon']:.2f}")
+```
+
+```typescript Node.js
+import { RotaStellarClient } from '@rotastellar/sdk';
+
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
+
+// Get 2-hour trajectory
+const trajectory = await client.getTrajectory({
+  satelliteId: '25544',
+  start: new Date(),
+  end: new Date(Date.now() + 2 * 60 * 60 * 1000),
+  intervalSec: 60
+});
+
+for (const point of trajectory) {
+  console.log(`${point.timestamp}: ${point.lat.toFixed(2)}, ${point.lon.toFixed(2)}`);
+}
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "satellite_id": "25544",
+  "start": "2026-01-21T12:00:00Z",
+  "end": "2026-01-21T14:00:00Z",
+  "interval_sec": 60,
+  "points": [
+    {
+      "timestamp": "2026-01-21T12:00:00Z",
+      "lat": 41.264,
+      "lon": -95.123,
+      "altitude_km": 420.5,
+      "velocity_km_s": 7.66
+    },
+    {
+      "timestamp": "2026-01-21T12:01:00Z",
+      "lat": 41.89,
+      "lon": -92.45,
+      "altitude_km": 420.6,
+      "velocity_km_s": 7.66
+    }
+  ],
+  "count": 120
+}
+```
+</ResponseExample>

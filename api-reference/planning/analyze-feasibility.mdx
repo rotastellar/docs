@@ -49,31 +49,37 @@ curl -X POST https://api.rotastellar.com/v1/planning/analyze \
 ```
 
 ```python Python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
-result = client.planning.analyze(
-    workload="ai_inference",
+result = client.analyze_feasibility(
+    workload_type="inference",
     compute_tflops=100,
-    storage_tb=10,
-    bandwidth_gbps=1,
-    latency_sla_ms=50
+    data_gb=10,
+    latency_requirement_ms=50,
+    orbit_altitude_km=550
 )
+
+print(f"Feasible: {result['feasible']}")
+print(f"Recommendation: {result['recommendation']}")
 ```
 
 ```typescript Node.js
-import { RotaStellar } from '@rotastellar/sdk';
+import { RotaStellarClient } from '@rotastellar/sdk';
 
-const client = new RotaStellar({ apiKey: 'rs_...' });
+const client = new RotaStellarClient({ apiKey: 'rs_...' });
 
-const result = await client.planning.analyze({
-  workload: 'ai_inference',
+const result = await client.analyzeFeasibility({
+  workloadType: 'inference',
   computeTflops: 100,
-  storageTb: 10,
-  bandwidthGbps: 1,
-  latencySlams: 50
+  dataGb: 10,
+  latencyRequirementMs: 50,
+  orbitAltitudeKm: 550
 });
+
+console.log(`Feasible: ${result.feasible}`);
+console.log(`Recommendation: ${result.recommendation}`);
 ```
 </RequestExample>
 
