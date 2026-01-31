@@ -20,7 +20,7 @@ pip install rotastellar
 ### Requirements
 
 - Python 3.9+
-- No additional dependencies for core functionality
+- httpx (for HTTP requests)
 
 ### Optional Dependencies
 
@@ -38,132 +38,172 @@ pip install rotastellar[all]
 ## Quick Start
 
 ```python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
 # Initialize client
-client = RotaStellar(api_key="rs_your_api_key")
+client = RotaStellarClient(api_key="rs_your_api_key")
 
 # Or use environment variable
 # export ROTASTELLAR_API_KEY=rs_your_api_key
-client = RotaStellar()
+client = RotaStellarClient()
 
 # Track a satellite
-iss = client.intelligence.satellite("ISS")
-print(iss.position())
+iss = client.get_satellite("25544")
+print(f"ISS: {iss.position.lat}, {iss.position.lon}")
 ```
 
 ## Client Configuration
 
 ```python
-from rotastellar import RotaStellar
+from rotastellar import RotaStellarClient
 
-client = RotaStellar(
+client = RotaStellarClient(
     api_key="rs_...",
     base_url="https://api.rotastellar.com/v1",  # Default
     timeout=30.0,     # Request timeout in seconds
     max_retries=3,    # Retry failed requests
-    verify_ssl=True   # SSL verification
+    debug=False       # Enable debug logging
 )
-```
-
-## Planning API
-
-```python
-# Feasibility analysis
-feasibility = client.planning.analyze(
-    workload="ai_inference",
-    compute_tflops=100,
-    storage_tb=10,
-    bandwidth_gbps=1
-)
-
-print(f"Recommended: {feasibility.recommendation}")
-print(f"Orbit: {feasibility.orbit}")
-print(f"Monthly cost: ${feasibility.cost_monthly}")
-
-# Thermal simulation
-thermal = client.planning.thermal(
-    orbit="LEO-550",
-    power_dissipation_w=500,
-    radiator_area_m2=2.0
-)
-
-print(f"Max temp: {thermal.max_temp_c}C")
-print(f"Eclipse temp: {thermal.eclipse_temp_c}C")
-
-# Latency simulation
-latency = client.planning.latency(
-    orbit="LEO-550",
-    ground_stations=["us-west", "europe", "asia"],
-    include_isl=True
-)
-
-print(f"P50: {latency.p50_ms}ms")
-print(f"P99: {latency.p99_ms}ms")
-
-# Power budgeting
-power = client.planning.power(
-    orbit="LEO-550",
-    compute_load_w=500,
-    duty_cycle=0.8,
-    mission_life_years=5
-)
-
-print(f"Solar array: {power.solar_array_m2} m2")
-print(f"Battery: {power.battery_kwh} kWh")
 ```
 
 ## Intelligence API
 
-```python
-# Get satellite
-sat = client.intelligence.satellite("STARLINK-1234")
-print(sat.position())
-print(sat.orbit())
+### Get Satellite
 
-# List satellites
-starlinks = client.intelligence.satellites(
+```python
+# Get satellite by NORAD ID
+sat = client.get_satellite("25544")  # ISS
+print(f"Name: {sat.name}")
+print(f"Position: {sat.position.lat}, {sat.position.lon}")
+print(f"Altitude: {sat.position.altitude_km} km")
+
+# Get position only
+pos = client.get_satellite_position("25544")
+print(f"Velocity: {pos.velocity_km_s} km/s")
+```
+
+### List Satellites
+
+```python
+# List satellites with filters
+satellites = client.list_satellites(
     constellation="Starlink",
     limit=100
 )
 
-# Get trajectory
-from datetime import datetime, timedelta
+for sat in satellites:
+    print(f"{sat.name}: {sat.norad_id}")
 
-trajectory = sat.trajectory(
-    start=datetime.utcnow(),
-    end=datetime.utcnow() + timedelta(hours=24),
-    interval_sec=300
-)
+# Filter by operator
+spacex_sats = client.list_satellites(operator="SpaceX", limit=50)
+```
 
-for point in trajectory.points:
-    print(f"{point.timestamp}: {point.lat}, {point.lon}")
+### Conjunction Analysis
 
-# Conjunction analysis
-conjunctions = client.intelligence.conjunctions(
-    satellite="STARLINK-1234",
-    threshold_km=1.0,
-    days_ahead=7
+```python
+from rotastellar.types import TimeRange
+
+# Get conjunction risks for a satellite
+conjunctions = client.list_conjunctions(
+    satellite_id="25544",
+    threshold_km=5.0,
+    limit=10
 )
 
 for conj in conjunctions:
-    print(f"TCA: {conj.tca}, Miss: {conj.miss_km}km, Pc: {conj.probability}")
+    print(f"TCA: {conj['tca']}")
+    print(f"Miss distance: {conj['miss_distance_km']:.3f} km")
+    print(f"Probability: {conj['collision_probability']:.2e}")
+```
 
-# Pattern detection
-patterns = client.intelligence.patterns(
-    satellite="COSMOS-2542",
+### Pattern Detection
+
+```python
+# Detect maneuvers and anomalies
+patterns = client.list_patterns(
+    satellite_id="44832",  # COSMOS-2542
     lookback_days=30
 )
 
 for pattern in patterns:
-    print(f"{pattern.type}: {pattern.description}")
+    print(f"{pattern['type']}: {pattern['description']}")
+    print(f"Confidence: {pattern['confidence']:.1%}")
+```
+
+### Trajectory Prediction
+
+```python
+from datetime import datetime, timedelta
+
+# Get predicted trajectory
+trajectory = client.get_trajectory(
+    satellite_id="25544",
+    start=datetime.utcnow(),
+    end=datetime.utcnow() + timedelta(hours=2),
+    interval_sec=60
+)
+
+for point in trajectory:
+    print(f"{point['timestamp']}: {point['lat']:.2f}, {point['lon']:.2f}")
+```
+
+## Planning API
+
+### Feasibility Analysis
+
+```python
+# Analyze if orbital compute is viable for your workload
+result = client.analyze_feasibility(
+    workload_type="inference",
+    compute_tflops=10,
+    data_gb=1.5,
+    latency_requirement_ms=100,
+    orbit_altitude_km=550
+)
+
+print(f"Feasible: {result['feasible']}")
+print(f"Recommendation: {result['recommendation']}")
+```
+
+### Thermal Simulation
+
+```python
+# Model heat rejection in orbit
+thermal = client.simulate_thermal(
+    power_watts=500,
+    orbit_altitude_km=550,
+    radiator_area_m2=2.0,
+    duration_hours=24
+)
+
+print(f"Max temp: {thermal['max_temperature_c']}°C")
+print(f"Min temp: {thermal['min_temperature_c']}°C")
+```
+
+### Latency Simulation
+
+```python
+from rotastellar.types import Position
+
+# Model end-to-end latency
+source = Position(latitude=37.7749, longitude=-122.4194)  # San Francisco
+dest = Position(latitude=51.5074, longitude=-0.1278)      # London
+
+latency = client.simulate_latency(
+    source=source,
+    destination=dest,
+    orbit_altitude_km=550,
+    relay_count=2
+)
+
+print(f"Total latency: {latency['total_latency_ms']:.1f} ms")
 ```
 
 ## Runtime API (Coming Q2 2026)
 
 ```python
-# Submit job
-job = client.runtime.submit(
+# Submit inference job to orbital compute
+job = client.submit_job(
     model="llama-70b",
     prompt="...",
     constraints={
@@ -173,9 +213,52 @@ job = client.runtime.submit(
 )
 
 # Get result
-result = job.result(timeout=30)
-print(result.text)
-print(result.adaptations)  # What the runtime adjusted
+result = client.get_job_result(job['id'], timeout=30)
+print(result['text'])
+```
+
+## Async Client
+
+For high-performance async applications:
+
+```python
+import asyncio
+from rotastellar import AsyncRotaStellarClient
+
+async def main():
+    client = AsyncRotaStellarClient(api_key="rs_...")
+
+    # Async satellite tracking
+    iss = await client.get_satellite("25544")
+    print(f"ISS: {iss.position.lat}, {iss.position.lon}")
+
+    # Concurrent requests
+    satellites = ["25544", "43013", "20580"]
+    tasks = [client.get_satellite(s) for s in satellites]
+    results = await asyncio.gather(*tasks)
+
+    for sat in results:
+        print(f"{sat.name}: {sat.position.altitude_km} km")
+
+asyncio.run(main())
+```
+
+## Pagination
+
+Handle large result sets efficiently:
+
+```python
+# Automatic iteration
+for sat in client.list_satellites(constellation="Starlink"):
+    print(sat.name)
+
+# Manual pagination
+page = client.list_satellites(constellation="Starlink", limit=100)
+
+while page.has_more:
+    for sat in page.items:
+        print(sat.name)
+    page = page.next_page()
 ```
 
 ## Distributed Compute API (Coming Q1 2026)
@@ -207,106 +290,19 @@ client = FederatedClient(
     compression=compression
 )
 
-# Train locally
-gradients = client.train_step(model, batch)
-
 # Sync during ground pass
 client.sync(gradients, priority="high")
-```
-
-### Model Partitioning
-
-```python
-from rotastellar_distributed import PartitionOptimizer, ModelProfile
-
-# Profile your model
-profile = ModelProfile.from_pytorch(model)
-
-# Find optimal partition
-optimizer = PartitionOptimizer(api_key="rs_...")
-partition = optimizer.optimize(
-    model=profile,
-    topology={
-        "ground_nodes": 3,
-        "orbital_nodes": 5,
-        "ground_flops": 100e12,
-        "orbital_flops": 20e12
-    },
-    objective="minimize_latency"
-)
-
-print(partition.ground_layers)   # Layers for ground
-print(partition.orbital_layers)  # Layers for orbit
-```
-
-### Sync Scheduler
-
-```python
-from rotastellar_distributed import SyncScheduler, GroundStation
-
-scheduler = SyncScheduler(
-    api_key="rs_...",
-    ground_stations=[
-        GroundStation("svalbard", lat=78.2, lon=15.6, bandwidth=1e9),
-        GroundStation("singapore", lat=1.3, lon=103.8, bandwidth=500e6)
-    ]
-)
-
-# Get sync windows
-windows = scheduler.get_windows(hours=24)
-
-# Schedule sync
-scheduler.schedule_sync(node="orbital-1", data_size=50e6, priority="critical")
 ```
 
 <Info>
   See the [Distributed Compute documentation](/distributed/overview) for full API reference.
 </Info>
 
-## Async Support
-
-```python
-import asyncio
-from rotastellar import AsyncRotaStellar
-
-async def main():
-    client = AsyncRotaStellar(api_key="rs_...")
-
-    # Async satellite tracking
-    iss = await client.intelligence.satellite("ISS")
-    pos = await iss.position()
-    print(pos)
-
-    # Concurrent requests
-    satellites = ["ISS", "STARLINK-1234", "COSMOS-2542"]
-    tasks = [client.intelligence.satellite(s) for s in satellites]
-    results = await asyncio.gather(*tasks)
-
-    for sat in results:
-        pos = await sat.position()
-        print(f"{sat.name}: {pos.lat}, {pos.lon}")
-
-asyncio.run(main())
-```
-
-## Streaming
-
-For long-running operations:
-
-```python
-# Stream conjunction updates
-for update in client.intelligence.conjunctions.stream(
-    satellite="STARLINK-1234",
-    threshold_km=5.0
-):
-    print(f"New conjunction: {update.tca}, Miss: {update.miss_km}km")
-```
-
 ## Error Handling
 
 ```python
-from rotastellar import RotaStellar
-from rotastellar.exceptions import (
+from rotastellar import RotaStellarClient
+from rotastellar.errors import (
     AuthenticationError,
     RateLimitError,
     NotFoundError,
@@ -314,10 +310,10 @@ from rotastellar.exceptions import (
     APIError
 )
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
 try:
-    sat = client.intelligence.satellite("INVALID-ID")
+    sat = client.get_satellite("INVALID-ID")
 except NotFoundError:
     print("Satellite not found")
 except RateLimitError as e:
@@ -335,45 +331,20 @@ except APIError as e:
 The SDK includes full type annotations for IDE support:
 
 ```python
-from rotastellar import RotaStellar
-from rotastellar.types import Position, Orbit, Satellite, Conjunction
+from rotastellar import RotaStellarClient
+from rotastellar.types import Position, Orbit, Satellite
 
-client = RotaStellar(api_key="rs_...")
+client = RotaStellarClient(api_key="rs_...")
 
-sat: Satellite = client.intelligence.satellite("ISS")
-pos: Position = sat.position()
-orbit: Orbit = sat.orbit()
+sat: Satellite = client.get_satellite("25544")
+pos: Position = sat.position
+orbit: Orbit = sat.orbit
 
 # IDE will provide autocomplete for all fields
 print(pos.lat)          # float
 print(pos.lon)          # float
 print(pos.altitude_km)  # float
 print(orbit.period_min) # float
-```
-
-## Pagination
-
-Handle large result sets:
-
-```python
-# Automatic pagination
-for sat in client.intelligence.satellites(constellation="Starlink"):
-    print(sat.name)  # Automatically fetches next page
-
-# Manual pagination
-page = client.intelligence.satellites(
-    constellation="Starlink",
-    limit=100
-)
-
-while page:
-    for sat in page.items:
-        print(sat.name)
-
-    if page.has_more:
-        page = page.next_page()
-    else:
-        break
 ```
 
 ## Logging
