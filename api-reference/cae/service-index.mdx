@@ -1,0 +1,56 @@
+---
+title: Service Index
+api: GET /v1
+description: "Get CAE service capabilities and endpoints"
+---
+
+<Note>
+  **Base URL:** `https://rotastellar-cae.subhadip-mitra.workers.dev`
+  — This is a separate service from the main RotaStellar API. No API key required.
+</Note>
+
+## Request
+
+No parameters.
+
+<RequestExample>
+```bash cURL
+curl https://rotastellar-cae.subhadip-mitra.workers.dev/v1 \
+  -H "Origin: https://rotastellar.com"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://rotastellar-cae.subhadip-mitra.workers.dev/v1",
+    headers={"Origin": "https://rotastellar.com"}
+)
+print(response.json())
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "service": "rotastellar-cae",
+  "version": "1.0.0",
+  "description": "Constraint-Aware Execution — orbital compute orchestration across the space-ground boundary",
+  "capabilities": [
+    "SGP4 orbital propagation",
+    "Real eclipse detection (cylindrical shadow model)",
+    "Ground station pass prediction (12-station network)",
+    "Compute placement optimization (on-board vs ground)",
+    "Data transfer scheduling with FEC and encryption overhead",
+    "Multi-pass downlink allocation",
+    "Deterministic error budget and delivery confidence"
+  ],
+  "endpoints": {
+    "GET /v1/presets": "List available workload presets",
+    "POST /v1/plan": "Create an execution plan for a satellite + workload",
+    "GET /v1/plan/:id": "Retrieve a previously created plan",
+    "GET /v1/plan/:id/events": "Get simulated execution event stream"
+  }
+}
+```
+</ResponseExample>

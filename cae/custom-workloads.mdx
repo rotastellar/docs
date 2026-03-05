@@ -1,0 +1,194 @@
+---
+title: Custom Workloads
+description: "Define your own orbital compute DAGs"
+---
+
+# Custom Workloads
+
+Instead of using a [preset](/cae/presets), you can define arbitrary step DAGs with `custom_job` in your plan request. The planner handles placement, transfer insertion, and scheduling the same way it does for presets.
+
+## Request Structure
+
+Send `custom_job` instead of `preset_id` in `POST /v1/plan`:
+
+```json
+{
+  "satellite_id": "25544",
+  "custom_job": {
+    "name": "My Pipeline",
+    "steps": [ ... ],
+    "security": { ... },
+    "policy": { ... }
+  }
+}
+```
+
+## Step Schema
+
+Each step in the `steps` array:
+
+<ParamField body="id" type="string" required>
+  Unique identifier within the job. Used in `depends_on` references.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Human-readable step name.
+</ParamField>
+
+<ParamField body="location" type="string" required>
+  Where the step runs: `onboard`, `ground`, or `either`. When set to `either`, the planner decides based on data reduction ratio and transfer cost.
+</ParamField>
+
+<ParamField body="duration_s" type="number" required>
+  Execution duration in seconds. Must be positive.
+</ParamField>
+
+<ParamField body="depends_on" type="string[]" required>
+  IDs of prerequisite steps. Use `[]` for steps with no dependencies.
+</ParamField>
+
+<ParamField body="requires" type="object" required>
+  Resource requirements:
+  - `power_w` — Power consumption in watts
+  - `compute` — Fraction of compute capacity (0.0–1.0)
+  - `thermal_w` — Thermal dissipation in watts
+  - `memory_mb` — Memory required in MB
+  - `storage_mb` — Storage required in MB
+</ParamField>
+
+<ParamField body="input_data_mb" type="number" default="0">
+  Input data size in MB.
+</ParamField>
+
+<ParamField body="output_data_mb" type="number" default="0">
+  Output data size in MB.
+</ParamField>
+
+<ParamField body="data_reduction_ratio" type="number">
+  Output/input ratio. `0.1` means 10:1 reduction. Set to `null` for data-generating steps.
+</ParamField>
+
+<ParamField body="checkpoint_interval_s" type="number" default="0">
+  Checkpoint frequency in seconds. `0` disables checkpointing.
+</ParamField>
+
+<ParamField body="retry_policy" type="string" default="retry_immediate">
+  `fail`, `retry_next_window`, or `retry_immediate`.
+</ParamField>
+
+<ParamField body="max_retries" type="number" default="1">
+  Maximum retry attempts.
+</ParamField>
+
+<ParamField body="encryption" type="string" default="none">
+  `none`, `aes128`, or `aes256`. Adds data expansion overhead.
+</ParamField>
+
+<ParamField body="integrity_check" type="string" default="none">
+  `none`, `crc32`, or `sha256`.
+</ParamField>
+
+<ParamField body="degraded_mode" type="object" default="null">
+  Fault tolerance. If set, provide `min_data_fraction` (0.0–1.0) and `reduced_duration_s`.
+</ParamField>
+
+## Security Overrides
+
+Optional `security` object at the job level:
+
+```json
+"security": {
+  "encryption": "aes256",
+  "data_classification": "restricted",
+  "require_authenticated_uplink": true,
+  "key_rotation_orbits": 24
+}
+```
+
+Defaults: AES-256 encryption, `restricted` classification, authenticated uplink, key rotation every 24 orbits.
+
+## Policy
+
+Optional `policy` object:
+
+```json
+"policy": {
+  "objective": "balanced",
+  "deadline_orbits": 6,
+  "max_data_loss_fraction": 0.01,
+  "min_delivery_confidence": 0.95
+}
+```
+
+| Field | Options | Default |
+|-------|---------|---------|
+| `objective` | `min_latency`, `min_energy`, `max_reliability`, `balanced` | `balanced` |
+| `deadline_orbits` | Number of orbital periods | `6` |
+| `max_data_loss_fraction` | 0.0–1.0 | `0.01` (1%) |
+| `min_delivery_confidence` | 0.0–1.0 | `0.95` (95%) |
+
+## Validation Rules
+
+- Every step must have a unique `id`
+- `depends_on` references must point to existing step IDs
+- No circular dependencies (validated via DFS)
+- `location` must be `onboard`, `ground`, or `either`
+- `duration_s` must be positive
+- `requires` must include all 5 resource fields
+
+Invalid requests return `400` with a `validation_error` describing the issue.
+
+## Example
+
+A 2-step pipeline: capture sensor data on-board, then process on the ground.
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "satellite_id": "25544",
+    "custom_job": {
+      "name": "Capture and Process",
+      "steps": [
+        {
+          "id": "capture",
+          "name": "Sensor Capture",
+          "location": "onboard",
+          "duration_s": 30,
+          "depends_on": [],
+          "requires": {
+            "power_w": 40,
+            "compute": 0.3,
+            "thermal_w": 15,
+            "memory_mb": 256,
+            "storage_mb": 1024
+          },
+          "input_data_mb": 0,
+          "output_data_mb": 500
+        },
+        {
+          "id": "process",
+          "name": "Ground Processing",
+          "location": "ground",
+          "duration_s": 60,
+          "depends_on": ["capture"],
+          "requires": {
+            "power_w": 100,
+            "compute": 1.0,
+            "thermal_w": 50,
+            "memory_mb": 2048,
+            "storage_mb": 2048
+          },
+          "input_data_mb": 500,
+          "output_data_mb": 50,
+          "data_reduction_ratio": 0.1
+        }
+      ]
+    }
+  }'
+```
+
+<Note>
+  The planner automatically inserts transfer steps (downlink/uplink) at space-ground boundaries. Your 2-step job may produce a plan with 3+ segments.
+</Note>

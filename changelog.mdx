@@ -7,6 +7,19 @@ description: "API version history and updates"
 
 All notable changes to the RotaStellar API.
 
+## 2026-03-05 — CAE v1.0
+
+### New: Constraint-Aware Execution
+
+- **CAE API** — POST a workload + satellite ID, get a physically-accurate execution plan computed from real orbital mechanics
+- **5 built-in presets:** on-board ML inference, split learning, earth observation with QA, federated learning, resilient store-and-forward
+- **Custom workload DAGs** — define arbitrary step pipelines with dependencies, resource requirements, and security policies
+- **4-phase planner:** topological sort, compute placement, transfer insertion, window scheduling
+- **Real orbital mechanics:** SGP4 propagation, eclipse detection, 12-station ground network (KSAT, NASA, AWS)
+- **Simulated execution events:** full event stream with transfer, checkpoint, and security events
+
+---
+
 ## 2026-02-01 — SDK Updates & Documentation Improvements
 
 ### SDK Updates

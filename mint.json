@@ -82,6 +82,15 @@
       ]
     },
     {
+      "group": "CAE",
+      "pages": [
+        "cae/overview",
+        "cae/presets",
+        "cae/custom-workloads",
+        "cae/understanding-plans"
+      ]
+    },
+    {
       "group": "Orbital Runtime",
       "pages": [
         "runtime/overview",
@@ -106,6 +115,16 @@
         "sdks/python",
         "sdks/node",
         "sdks/rust"
+      ]
+    },
+    {
+      "group": "CAE",
+      "pages": [
+        "api-reference/cae/service-index",
+        "api-reference/cae/list-presets",
+        "api-reference/cae/create-plan",
+        "api-reference/cae/get-plan",
+        "api-reference/cae/get-plan-events"
       ]
     },
     {

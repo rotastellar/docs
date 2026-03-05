@@ -1,0 +1,95 @@
+---
+title: Get Plan Events
+api: GET /v1/plan/{plan_id}/events
+description: "Get the simulated execution event stream for a plan"
+---
+
+<Note>
+  **Base URL:** `https://rotastellar-cae.subhadip-mitra.workers.dev`
+  — No API key required. Plans expire after 1 hour.
+</Note>
+
+## Request
+
+<ParamField path="plan_id" type="string" required>
+  UUID returned from `POST /v1/plan`.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan/a92f33e8-a349-494c-8b4e-f87d859b9ec5/events \
+  -H "Origin: https://rotastellar.com"
+```
+
+```python Python
+import requests
+
+plan_id = "a92f33e8-a349-494c-8b4e-f87d859b9ec5"
+response = requests.get(
+    f"https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan/{plan_id}/events",
+    headers={"Origin": "https://rotastellar.com"}
+)
+
+data = response.json()
+for event in data["events"]:
+    print(f"[{event['type']}] {event.get('message', '')}")
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "plan_id": "a92f33e8-a349-494c-8b4e-f87d859b9ec5",
+  "events": [
+    {
+      "type": "job.accepted",
+      "timestamp_s": 0,
+      "message": "Workload accepted: On-Board ML Inference"
+    },
+    {
+      "type": "placement.decided",
+      "timestamp_s": 0,
+      "step_id": "capture",
+      "location": "onboard",
+      "message": "Step 'capture' placed on-board"
+    },
+    {
+      "type": "step.started",
+      "timestamp_s": 0,
+      "step_id": "capture",
+      "message": "Starting Sensor Data Capture"
+    },
+    {
+      "type": "step.completed",
+      "timestamp_s": 30,
+      "step_id": "capture",
+      "output_data_mb": 2000,
+      "message": "Completed Sensor Data Capture"
+    },
+    {
+      "type": "transfer.started",
+      "timestamp_s": 170,
+      "direction": "downlink",
+      "data_mb": 11.03,
+      "message": "Starting downlink transfer"
+    },
+    {
+      "type": "job.completed",
+      "timestamp_s": 1382,
+      "message": "Pipeline completed successfully",
+      "delivery_confidence": 0.997
+    }
+  ],
+  "count": 73
+}
+```
+
+```json 404 Not Found
+{
+  "error": {
+    "code": "not_found",
+    "message": "Plan a92f33e8-... not found or expired"
+  }
+}
+```
+</ResponseExample>

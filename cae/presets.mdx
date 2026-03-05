@@ -1,0 +1,140 @@
+---
+title: Workload Presets
+description: "5 ready-to-use orbital compute workloads"
+---
+
+# Workload Presets
+
+Presets are complete workload definitions you can use immediately with `POST /v1/plan`. Each defines a multi-step pipeline with resource requirements, dependencies, security policies, and optimization objectives.
+
+List all presets:
+
+```bash
+curl https://rotastellar-cae.subhadip-mitra.workers.dev/v1/presets \
+  -H "Origin: https://rotastellar.com"
+```
+
+## On-Board ML Inference
+
+All computation on-board. Captures 2GB of sensor data, runs ML inference, and downlinks only the 10.5MB encrypted result — a **190:1 data reduction**.
+
+| Property | Value |
+|----------|-------|
+| ID | `onboard-ml-inference` |
+| Category | ml-inference |
+| Steps | 4 (capture, preprocess, inference, encrypt) |
+| All on-board | Yes |
+| Data flow | 2,000 MB → 10.5 MB |
+| Policy | `min_latency`, 3-orbit deadline, 99% confidence |
+
+**Pipeline:** Sensor Capture → Data Preprocessing & Calibration → ML Model Inference → Encrypt Results
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{"satellite_id": "25544", "preset_id": "onboard-ml-inference"}'
+```
+
+---
+
+## Split Learning Pipeline
+
+Bidirectional training. Satellite runs the first 3 neural network layers (feature extraction, 40:1 reduction), downlinks 36.75MB of activations. Ground trains the remaining layers and uplinks 5.25MB of updated weights.
+
+| Property | Value |
+|----------|-------|
+| ID | `split-learning` |
+| Category | ml-training |
+| Steps | 9 (capture → feature extraction → compress → encrypt → train backend → compress weights → encrypt → deploy) |
+| Downlink | 36.75 MB (activations) |
+| Uplink | 5.25 MB (weights) |
+| Policy | `balanced`, 6-orbit deadline, 95% confidence |
+| Security | `confidential`, authenticated uplink, key rotation every 12 orbits |
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{"satellite_id": "25544", "preset_id": "split-learning"}'
+```
+
+---
+
+## Earth Observation with QA
+
+Captures 5GB of imagery, runs on-board quality assurance to discard bad frames and cloudy scenes, compresses to 400MB, applies Reed-Solomon FEC and AES-256, then downlinks 560MB across multiple ground station passes.
+
+| Property | Value |
+|----------|-------|
+| ID | `earth-observation-qa` |
+| Category | earth-observation |
+| Steps | 8 (capture → QA → cloud filter → JPEG2000 compress → FEC encode → encrypt → ground validation → archive) |
+| Data flow | 5,000 MB → 560 MB transferred |
+| Multi-pass downlink | Yes |
+| Policy | `max_reliability`, 8-orbit deadline, 95% confidence |
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{"satellite_id": "25544", "preset_id": "earth-observation-qa"}'
+```
+
+---
+
+## Federated Learning
+
+Privacy-preserving distributed training. The satellite trains locally on 500MB of data, computes and sparsifies gradients (top-k, 90% zeros), downlinks 3.7MB. Ground aggregates via FedAvg and uplinks 5.8MB updated global model. **Raw data never leaves the satellite.**
+
+| Property | Value |
+|----------|-------|
+| ID | `federated-learning` |
+| Category | ml-training |
+| Steps | 10 (local train → gradients → sparsify → compress → encrypt → aggregate → compress model → encrypt → deploy) |
+| Downlink | 3.7 MB (sparse gradients) |
+| Uplink | 5.8 MB (global model) |
+| Policy | `balanced`, 6-orbit deadline, 95% confidence |
+| Security | `confidential`, authenticated uplink, key rotation every 12 orbits |
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{"satellite_id": "25544", "preset_id": "federated-learning"}'
+```
+
+---
+
+## Resilient Store-and-Forward Relay
+
+Receives 100MB from a remote sensor during one pass, applies Reed-Solomon erasure coding (rate 2/3 — any 2-of-3 blocks reconstruct), buffers on-board, and transmits during a different ground pass.
+
+| Property | Value |
+|----------|-------|
+| ID | `resilient-store-forward` |
+| Category | relay |
+| Steps | 5 (uplink receive → integrity check → erasure coding → encrypt & buffer → ground decode) |
+| Data transferred | 157.5 MB (with erasure coding overhead) |
+| Policy | `max_reliability`, 4-orbit deadline, 99% confidence |
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{"satellite_id": "25544", "preset_id": "resilient-store-forward"}'
+```
+
+---
+
+## Comparison
+
+| Preset | Steps | Data Reduction | Downlink | Uplink | Objective | Deadline |
+|--------|-------|---------------|----------|--------|-----------|----------|
+| On-Board ML Inference | 4 | 190:1 | 10.5 MB | — | min_latency | 3 orbits |
+| Split Learning | 9 | 40:1 | 36.75 MB | 5.25 MB | balanced | 6 orbits |
+| Earth Observation QA | 8 | 9:1 | 560 MB | — | max_reliability | 8 orbits |
+| Federated Learning | 10 | 135:1 | 3.7 MB | 5.8 MB | balanced | 6 orbits |
+| Store-and-Forward | 5 | 1:1.6 (expansion) | 157.5 MB | — | max_reliability | 4 orbits |
+
+Need something different? Define a [custom workload](/cae/custom-workloads).

@@ -1,0 +1,214 @@
+---
+title: Understanding Plans
+description: "How to read CAE execution plan responses"
+---
+
+# Understanding Plans
+
+When you create a plan via `POST /v1/plan`, the response contains a complete execution plan computed from real orbital mechanics. This page walks through each section.
+
+## Response Structure
+
+```json
+{
+  "id": "a92f33e8-...",
+  "created_at": "2026-03-05T06:55:37.811Z",
+  "version": "1.0.0",
+  "satellite": { ... },
+  "preset": { ... },
+  "orbital_environment": { ... },
+  "placement_decisions": [ ... ],
+  "transfer_schedule": { ... },
+  "error_budget": { ... },
+  "security_summary": { ... },
+  "plan": { ... },
+  "events": [ ... ]
+}
+```
+
+## Satellite
+
+Orbital parameters computed from real TLE data at plan creation time.
+
+```json
+"satellite": {
+  "id": "25544",
+  "name": "ISS (ZARYA)",
+  "norad_id": 25544,
+  "altitude_km": 417,
+  "inclination_deg": 51.6,
+  "period_min": 93,
+  "tle_epoch": "26063.86671769"
+}
+```
+
+## Orbital Environment
+
+The physical context the planner works within: eclipse fraction, satellite bus capabilities, orbital windows (sunlit/eclipse periods with resource envelopes), and predicted ground station passes.
+
+```json
+"orbital_environment": {
+  "prediction_start": "2026-03-05T06:55:37.811Z",
+  "prediction_hours": 12,
+  "eclipse_fraction": 0.348,
+  "bus": {
+    "peak_solar_w": 789,
+    "eclipse_battery_w": 20,
+    "max_thermal_w": 45,
+    "compute_sunlit": 1,
+    "compute_eclipse": 0.6,
+    "storage_mb": 4096,
+    "memory_mb": 2048
+  },
+  "windows": [ ... ],
+  "ground_passes": [ ... ],
+  "summary": {
+    "total_windows": 14,
+    "comms_windows": 6,
+    "sunlit_windows": 9,
+    "eclipse_windows": 5,
+    "total_pass_time_s": 2847,
+    "ground_stations_visible": 8
+  }
+}
+```
+
+**Windows** are orbital time slots with available resources. The planner fits steps into windows based on power, thermal, and compute constraints. **Ground passes** are periods when the satellite is visible from a ground station — required for data transfer.
+
+## Placement Decisions
+
+For each step, the planner decides whether it runs on-board or on the ground. Steps with `location: "either"` are automatically placed based on data reduction ratio and transfer cost.
+
+```json
+"placement_decisions": [
+  { "step_id": "capture", "location": "onboard", "reason": "preset_defined" },
+  { "step_id": "inference", "location": "onboard", "reason": "data_reduction_50x" },
+  { "step_id": "validate", "location": "ground", "reason": "onboard_infeasible (thermal)" }
+]
+```
+
+## Transfer Schedule
+
+The planner auto-inserts transfer segments at space-ground boundaries. This section shows all data transfers with FEC overhead, encryption expansion, and ground station assignments.
+
+```json
+"transfer_schedule": {
+  "transfers": [
+    {
+      "from_step": "encrypt",
+      "to_step": "ground_validation",
+      "direction": "downlink",
+      "raw_data_mb": 560,
+      "fec_overhead_mb": 28,
+      "encryption_overhead_mb": 5.6,
+      "total_transfer_mb": 593.6,
+      "passes": [
+        { "station": "Svalbard", "data_mb": 350, "duration_s": 420 },
+        { "station": "Fairbanks", "data_mb": 243.6, "duration_s": 310 }
+      ]
+    }
+  ],
+  "total_transfers": 1,
+  "total_downlink_mb": 593.6,
+  "total_uplink_mb": 0,
+  "passes_used": 2,
+  "total_transfer_time_s": 730
+}
+```
+
+## Error Budget
+
+Quantifies data integrity: worst-case bit error rate, FEC overhead, retransmission reserves, and the resulting delivery confidence.
+
+```json
+"error_budget": {
+  "worst_case_ber": 0.00001,
+  "total_fec_overhead_mb": 28,
+  "total_retransmission_reserve_mb": 14,
+  "delivery_confidence": 0.967
+}
+```
+
+The `delivery_confidence` is the probability that all data is delivered correctly within the deadline, accounting for link errors and retransmissions.
+
+## Security Summary
+
+Encryption overhead and key exchange details.
+
+```json
+"security_summary": {
+  "encryption": "aes256",
+  "total_encryption_overhead_mb": 5.6,
+  "total_key_exchanges": 2,
+  "data_classification": "restricted"
+}
+```
+
+## Plan Segments
+
+The scheduled execution timeline. Each segment is a step assigned to an orbital window with a start time.
+
+```json
+"plan": {
+  "segments": [
+    {
+      "step_id": "capture",
+      "location": "onboard",
+      "window_index": 0,
+      "start_offset_s": 0,
+      "duration_s": 60,
+      "resources": { ... }
+    }
+  ],
+  "total_duration_s": 8940,
+  "total_compute_s": 253,
+  "total_transfer_s": 730,
+  "total_ground_s": 75,
+  "windows_used": 4,
+  "policy": { "objective": "max_reliability", "deadline_orbits": 8 }
+}
+```
+
+<Note>
+  The plan may contain more segments than your original step count — the planner auto-inserts transfer segments at every space-ground boundary.
+</Note>
+
+## Event Stream
+
+A simulated execution trace showing every significant moment. Retrieve via the plan response or separately via `GET /v1/plan/:id/events`.
+
+| Event Type | Description |
+|-----------|-------------|
+| `job.accepted` | Workload received |
+| `placement.decided` | Step location assigned |
+| `plan.created` | Plan is ready |
+| `step.started` | Step execution begins |
+| `step.progress` | Progress at 25%, 50%, 75% |
+| `checkpoint.saved` | Intermediate checkpoint |
+| `step.completed` | Step finished |
+| `transfer.started` | Data transfer begins |
+| `transfer.pass_started` | Transfer via ground station |
+| `transfer.progress` | Transfer midpoint |
+| `transfer.retransmission` | Blocks retransmitted due to errors |
+| `transfer.pass_completed` | Ground station pass finished |
+| `transfer.completed` | All data transferred |
+| `security.key_exchange` | Encryption key exchange |
+| `security.encrypted` | Data encrypted |
+| `job.completed` | Pipeline finished successfully |
+| `job.failed` | Pipeline failed |
+
+## Plan Storage
+
+Plans are stored for **1 hour**. Retrieve a plan by ID:
+
+```bash
+curl https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan/{plan_id} \
+  -H "Origin: https://rotastellar.com"
+```
+
+Get just the event stream:
+
+```bash
+curl https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan/{plan_id}/events \
+  -H "Origin: https://rotastellar.com"
+```

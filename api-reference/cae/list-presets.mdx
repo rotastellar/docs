@@ -1,0 +1,73 @@
+---
+title: List Presets
+api: GET /v1/presets
+description: "List available workload presets with metadata"
+---
+
+<Note>
+  **Base URL:** `https://rotastellar-cae.subhadip-mitra.workers.dev`
+  — No API key required.
+</Note>
+
+## Request
+
+No parameters.
+
+<RequestExample>
+```bash cURL
+curl https://rotastellar-cae.subhadip-mitra.workers.dev/v1/presets \
+  -H "Origin: https://rotastellar.com"
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://rotastellar-cae.subhadip-mitra.workers.dev/v1/presets",
+    headers={"Origin": "https://rotastellar.com"}
+)
+
+for preset in response.json()["presets"]:
+    print(f"{preset['id']}: {preset['steps']} steps, {preset['data_flow']['overall_reduction']} reduction")
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "presets": [
+    {
+      "id": "onboard-ml-inference",
+      "name": "On-Board ML Inference",
+      "description": "Run ML inference on-board to achieve 190:1 data reduction before downlink...",
+      "category": "ml-inference",
+      "steps": 4,
+      "onboard_steps": 4,
+      "ground_steps": 0,
+      "total_compute_s": 170,
+      "data_flow": {
+        "initial_capture_mb": 2000,
+        "final_output_mb": 10.5,
+        "overall_reduction": "190:1"
+      },
+      "needs_downlink": true,
+      "needs_uplink": false,
+      "security": {
+        "encryption": "aes256",
+        "data_classification": "restricted",
+        "allowed_ground_stations": null,
+        "require_authenticated_uplink": true,
+        "key_rotation_orbits": 24
+      },
+      "policy": {
+        "objective": "min_latency",
+        "deadline_orbits": 3,
+        "max_data_loss_fraction": 0.001,
+        "min_delivery_confidence": 0.99
+      }
+    }
+  ],
+  "count": 5
+}
+```
+</ResponseExample>

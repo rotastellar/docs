@@ -1,0 +1,62 @@
+---
+title: Get Plan
+api: GET /v1/plan/{plan_id}
+description: "Retrieve a previously created execution plan"
+---
+
+<Note>
+  **Base URL:** `https://rotastellar-cae.subhadip-mitra.workers.dev`
+  — No API key required. Plans expire after 1 hour.
+</Note>
+
+## Request
+
+<ParamField path="plan_id" type="string" required>
+  UUID returned from `POST /v1/plan`.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan/a92f33e8-a349-494c-8b4e-f87d859b9ec5 \
+  -H "Origin: https://rotastellar.com"
+```
+
+```python Python
+import requests
+
+plan_id = "a92f33e8-a349-494c-8b4e-f87d859b9ec5"
+response = requests.get(
+    f"https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan/{plan_id}",
+    headers={"Origin": "https://rotastellar.com"}
+)
+print(response.json())
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "id": "a92f33e8-a349-494c-8b4e-f87d859b9ec5",
+  "created_at": "2026-03-05T06:55:37.811Z",
+  "version": "1.0.0",
+  "satellite": { "..." : "..." },
+  "preset": { "..." : "..." },
+  "orbital_environment": { "..." : "..." },
+  "placement_decisions": [ "..." ],
+  "transfer_schedule": { "..." : "..." },
+  "error_budget": { "..." : "..." },
+  "security_summary": { "..." : "..." },
+  "plan": { "..." : "..." },
+  "events": [ "..." ]
+}
+```
+
+```json 404 Not Found
+{
+  "error": {
+    "code": "not_found",
+    "message": "Plan a92f33e8-... not found or expired"
+  }
+}
+```
+</ResponseExample>

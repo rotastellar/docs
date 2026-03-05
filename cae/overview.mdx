@@ -1,0 +1,81 @@
+---
+title: CAE Overview
+description: "Constraint-Aware Execution — orbital compute orchestration across the space-ground boundary"
+---
+
+# Constraint-Aware Execution
+
+POST a workload and a satellite ID. Get back a physically-accurate execution plan — computed from real orbital mechanics, real ground station passes, and real power/thermal constraints.
+
+<Info>
+  **Available now** — CAE v1.0 is live. No API key required.
+</Info>
+
+## How It Works
+
+1. **Choose a workload** — pick from 5 built-in [presets](/cae/presets) or define a [custom DAG](/cae/custom-workloads)
+2. **CAE builds the orbital environment** — SGP4 propagation from real TLE data, eclipse detection, ground station pass prediction
+3. **4-phase planner runs** — topological sort, compute placement (on-board vs ground), transfer insertion, window scheduling
+4. **You get a complete plan** — placement decisions, transfer schedule, error budget, security summary, and a simulated execution event stream
+
+<CardGroup cols={3}>
+  <Card title="Presets" icon="list" href="/cae/presets">
+    5 ready-to-use orbital compute workloads
+  </Card>
+  <Card title="Custom Workloads" icon="diagram-project" href="/cae/custom-workloads">
+    Define your own step DAGs with dependencies
+  </Card>
+  <Card title="Understanding Plans" icon="chart-gantt" href="/cae/understanding-plans">
+    How to read plan responses
+  </Card>
+</CardGroup>
+
+## Capabilities
+
+| Capability | Details |
+|-----------|---------|
+| Orbital propagation | SGP4 from real CelesTrak TLE data |
+| Eclipse detection | Cylindrical shadow model |
+| Ground network | 12 stations (KSAT, NASA, AWS) |
+| Compute placement | Automatic on-board vs ground optimization |
+| Transfer scheduling | Multi-pass downlink/uplink with FEC overhead |
+| Error correction | Reed-Solomon FEC, retransmission reserves |
+| Security | AES-128/256 encryption, SHA-256/CRC32 integrity |
+| Delivery confidence | Deterministic error budget calculation |
+
+## Base URL
+
+```
+https://rotastellar-cae.subhadip-mitra.workers.dev
+```
+
+<Note>
+  CAE does not require an API key. Access is controlled via CORS origin checking.
+  Requests from `rotastellar.com` and `localhost:4000` are allowed.
+  For cURL testing, include `-H "Origin: https://rotastellar.com"`.
+</Note>
+
+## Quick Example
+
+Create an execution plan for the ISS using the on-board ML inference preset:
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "satellite_id": "25544",
+    "preset_id": "onboard-ml-inference"
+  }'
+```
+
+The response includes the full execution plan with orbital environment, placement decisions, transfer schedule, error budget, and a simulated event stream. See [Understanding Plans](/cae/understanding-plans) for a walkthrough.
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | [`/v1/presets`](/api-reference/cae/list-presets) | List workload presets |
+| `POST` | [`/v1/plan`](/api-reference/cae/create-plan) | Create an execution plan |
+| `GET` | [`/v1/plan/:id`](/api-reference/cae/get-plan) | Retrieve a plan |
+| `GET` | [`/v1/plan/:id/events`](/api-reference/cae/get-plan-events) | Get execution event stream |
