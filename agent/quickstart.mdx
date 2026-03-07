@@ -1,0 +1,106 @@
+---
+title: Agent Quickstart
+description: "Run your first simulated satellite execution in 5 minutes"
+---
+
+# Agent Quickstart
+
+This guide walks you through running a simulated satellite execution using the RotaStellar Operator Agent.
+
+## Prerequisites
+
+- [Rust 1.75+](https://rustup.rs/) installed
+- A RotaStellar Console account at [console.rotastellar.com](https://console.rotastellar.com)
+- An API key (create one under **Developer > API Keys** in the Console)
+
+## 1. Clone and Build
+
+```bash
+git clone https://github.com/rotastellar/rotastellar-agent.git
+cd rotastellar-agent
+cargo build --release
+```
+
+The binary is at `target/release/rotastellar-agent`.
+
+## 2. Create a Plan
+
+Before running the agent, you need a deployment. In Mission Control:
+
+1. Go to **Missions** and create a new mission
+2. Open the mission and click **New Plan**
+3. Select a satellite (e.g., ISS — NORAD ID `25544`) and a preset (e.g., On-Board ML Inference)
+4. Review the plan and click **Deploy**
+5. Choose **Live** mode — this creates a deployment that waits for an agent
+
+Alternatively, create a plan via the CAE API and save the response:
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{"satellite_id": "25544", "preset_id": "onboard-ml-inference"}' \
+  -o plan.json
+```
+
+## 3. Run the Agent
+
+### Option A: Poll mode (recommended)
+
+Run the agent in long-running poll mode. It will register with the Console, then continuously poll for pending deployments.
+
+```bash
+export ROTASTELLAR_API_KEY="rs_live_..."
+
+./target/release/rotastellar-agent run \
+  --agent-id sat-25544 \
+  --api-url https://console.rotastellar.com \
+  --api-key $ROTASTELLAR_API_KEY
+```
+
+When you deploy a plan in Mission Control with **Live** mode, the agent will pick it up automatically.
+
+### Option B: Simulate a plan file
+
+If you have a saved CAE plan JSON, you can replay it directly:
+
+```bash
+./target/release/rotastellar-agent simulate \
+  --plan plan.json \
+  --speed 100 \
+  --api-url https://console.rotastellar.com \
+  --api-key $ROTASTELLAR_API_KEY
+```
+
+## 4. Watch the Execution
+
+Open the deployment in Mission Control. You'll see events appear in the timeline as the agent reports them:
+
+```
+[T+    0s] job.accepted
+[T+    0s] placement.decided capture
+[T+    0s] placement.decided preprocess
+[T+    5s] step.started capture
+[T+   10s] step.progress capture (25%)
+[T+   25s] step.completed capture
+[T+   30s] step.started preprocess
+...
+[T+  180s] job.completed
+```
+
+The deployment status transitions: `pending` → `dispatched` → `running` → `completed`.
+
+## 5. Check Telemetry
+
+While running, the agent sends periodic telemetry heartbeats. You can see agent status in the Console under **Agents** — including status, last heartbeat, and resource usage.
+
+## What's Next
+
+<CardGroup cols={2}>
+  <Card title="Protocol Spec" icon="file-contract" href="/agent/protocol">
+    Deep dive into the pull-based protocol
+  </Card>
+  <Card title="Rust SDK" icon="rust" href="/agent/rust-sdk">
+    Build a custom agent for your satellite hardware
+  </Card>
+</CardGroup>

@@ -1,0 +1,70 @@
+---
+title: Getting Started
+description: "Sign up, create your first mission, build a plan, and deploy"
+---
+
+# Getting Started with Mission Control
+
+This guide walks you through your first satellite compute deployment — from sign-up to watching events roll in.
+
+## 1. Create an Account
+
+Go to [console.rotastellar.com](https://console.rotastellar.com) and sign up with your email. You'll receive a magic link — click it to log in. No password required.
+
+## 2. Create a Mission
+
+Missions group related satellite operations.
+
+1. Click **Missions** in the sidebar
+2. Click **New Mission**
+3. Enter a name (e.g., "ISS ML Pipeline") and optional description
+4. Click **Create**
+
+## 3. Build a Plan
+
+A plan is a complete execution schedule built by the [CAE engine](/cae/overview).
+
+1. Open your mission and click **New Plan**
+2. Search for a satellite by name or NORAD ID (e.g., "ISS" or "25544")
+3. Choose a workload:
+   - **Preset** — Select from 5 built-in workloads like [On-Board ML Inference](/cae/presets#on-board-ml-inference) or [Split Learning](/cae/presets#split-learning-pipeline)
+   - **Custom** — Define your own step DAG with dependencies, resource requirements, and security policies
+4. Click **Generate Plan**
+
+The plan builder shows:
+- **Timeline** — Step-by-step execution with orbital window scheduling
+- **Placement** — Which steps run on-board vs on the ground
+- **Transfers** — Ground station passes used for downlink/uplink
+- **Error budget** — Delivery confidence based on link quality and FEC
+- **Cost estimate** — Compute and transfer costs
+
+## 4. Deploy
+
+1. From the plan detail page, click **Deploy**
+2. Choose a mode:
+   - **Simulated** — Events are generated server-side. Adjust the speed multiplier (default: 100x).
+   - **Live** — Requires a registered [Operator Agent](/agent/overview) on the target satellite.
+3. Click **Deploy**
+
+The deployment page shows a real-time event timeline as the execution progresses.
+
+## 5. Create an API Key
+
+To use the Agent SDK or call the Deploy API programmatically:
+
+1. Go to **Developer > API Keys** in the sidebar
+2. Click **Create Key**
+3. Give it a name and copy the key (it won't be shown again)
+
+Use the key in the `X-API-Key` header for API requests and agent authentication.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Missions & Plans" icon="rocket" href="/console/missions-and-plans">
+    Deep dive into mission management and plan configuration
+  </Card>
+  <Card title="Agent Quickstart" icon="satellite" href="/agent/quickstart">
+    Set up the Operator Agent for live deployments
+  </Card>
+</CardGroup>

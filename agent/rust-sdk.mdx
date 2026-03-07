@@ -1,0 +1,220 @@
+---
+title: Rust SDK
+description: "Build satellite agents with the rotastellar-agent Rust crate"
+---
+
+# Rust SDK
+
+The `rotastellar-agent` crate provides everything you need to build a satellite agent: the `Agent` trait, a simulated satellite for testing, an HTTP client for the Console API, and a CLI binary.
+
+<Info>
+  **License:** [MPL-2.0](https://github.com/rotastellar/rotastellar-agent/blob/master/LICENSE) — modified files must be shared, but you can use the crate in proprietary projects.
+</Info>
+
+## Installation
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+rotastellar-agent = { git = "https://github.com/rotastellar/rotastellar-agent" }
+```
+
+Or clone and build directly:
+
+```bash
+git clone https://github.com/rotastellar/rotastellar-agent.git
+cd rotastellar-agent
+cargo build --release
+```
+
+## The Agent Trait
+
+The core abstraction is the `Agent` trait. It defines the satellite-side execution protocol:
+
+```rust
+#[async_trait]
+pub trait Agent: Send + Sync {
+    /// Poll the Console API for pending workloads.
+    async fn poll(&self) -> Result<Option<WorkloadSpec>, AgentError>;
+
+    /// Report an execution event.
+    async fn report_event(&self, event: &AgentEvent) -> Result<(), AgentError>;
+
+    /// Report telemetry data (heartbeat, resource usage).
+    async fn report_telemetry(&self, telemetry: &AgentTelemetry) -> Result<(), AgentError>;
+
+    /// Execute a workload.
+    async fn execute(&self, workload: &WorkloadSpec) -> Result<(), AgentError>;
+
+    /// Start the agent run loop.
+    async fn start(&self) -> Result<(), AgentError>;
+
+    /// Stop the agent gracefully.
+    async fn stop(&self) -> Result<(), AgentError>;
+}
+```
+
+## Using SimulatedSatellite
+
+The built-in `SimulatedSatellite` replays pre-computed CAE event streams with realistic timing. Use it for testing and demos.
+
+```rust
+use rotastellar_agent::{AgentConfig, SimulatedSatellite, Agent};
+
+#[tokio::main]
+async fn main() {
+    let config = AgentConfig {
+        agent_id: "sat-25544".into(),
+        api_url: "https://console.rotastellar.com".into(),
+        api_key: "rs_live_...".into(),
+        poll_interval_s: 30,
+    };
+
+    // 100x speed — a 90-minute orbit plays in ~1 minute
+    let agent = SimulatedSatellite::new(config, 100.0).unwrap();
+    agent.start().await.unwrap();
+}
+```
+
+The `speed_multiplier` controls replay speed:
+- `1.0` — real-time (events play at actual orbital timing)
+- `10.0` — 10x faster
+- `100.0` — 100x faster (default for demos)
+- `10000.0` — near-instant (useful for automated tests)
+
+## Building a Custom Agent
+
+Implement the `Agent` trait to run real computations on satellite hardware:
+
+```rust
+use async_trait::async_trait;
+use rotastellar_agent::{Agent, AgentError, AgentEvent, AgentTelemetry, WorkloadSpec};
+
+struct MyAgent {
+    config: AgentConfig,
+    client: ConsoleClient,
+}
+
+#[async_trait]
+impl Agent for MyAgent {
+    async fn poll(&self) -> Result<Option<WorkloadSpec>, AgentError> {
+        self.client.poll_workloads().await
+    }
+
+    async fn report_event(&self, event: &AgentEvent) -> Result<(), AgentError> {
+        self.client.report_event(&event.job_id, event).await
+    }
+
+    async fn report_telemetry(&self, telemetry: &AgentTelemetry) -> Result<(), AgentError> {
+        self.client.report_telemetry(telemetry).await
+    }
+
+    async fn execute(&self, workload: &WorkloadSpec) -> Result<(), AgentError> {
+        // Run your computation here.
+        // Report events for each step transition.
+        for event in &workload.events {
+            self.report_event(event).await?;
+        }
+        Ok(())
+    }
+
+    async fn start(&self) -> Result<(), AgentError> {
+        // Implement your run loop
+        todo!()
+    }
+
+    async fn stop(&self) -> Result<(), AgentError> {
+        // Signal graceful shutdown
+        todo!()
+    }
+}
+```
+
+## Types
+
+### AgentConfig
+
+```rust
+pub struct AgentConfig {
+    pub agent_id: String,      // Unique agent identifier (e.g., "sat-25544")
+    pub api_url: String,       // Console API URL
+    pub api_key: String,       // API key (rs_live_...)
+    pub poll_interval_s: u64,  // Seconds between polls (default: 30)
+}
+```
+
+### WorkloadSpec
+
+```rust
+pub struct WorkloadSpec {
+    pub plan_id: String,          // CAE plan ID
+    pub deployment_id: String,    // Console deployment ID
+    pub satellite_id: String,     // NORAD catalog ID
+    pub plan_data: serde_json::Value,  // Full CAE plan data
+    pub events: Vec<AgentEvent>,  // Pre-computed event timeline
+}
+```
+
+### AgentEvent
+
+```rust
+pub struct AgentEvent {
+    pub event_type: String,            // Serializes as "type" in JSON
+    pub timestamp: String,             // ISO 8601
+    pub job_id: String,
+    pub step_id: Option<String>,       // Omitted from JSON when None
+    pub payload: serde_json::Value,
+}
+```
+
+### AgentTelemetry
+
+```rust
+pub struct AgentTelemetry {
+    pub agent_id: String,
+    pub status: AgentStatus,          // idle, executing, transferring, offline
+    pub timestamp: String,
+    pub cpu_percent: Option<f64>,     // Omitted when None
+    pub memory_mb: Option<f64>,
+    pub battery_percent: Option<f64>,
+    pub temperature_c: Option<f64>,
+}
+```
+
+### AgentError
+
+```rust
+pub enum AgentError {
+    ApiError(String),              // API request failed
+    NetworkError(reqwest::Error),  // Network error
+    SerializationError(serde_json::Error),
+    ExecutionError(String),        // Execution error
+    Stopped,                       // Agent stopped
+}
+```
+
+## CLI
+
+The crate builds a CLI binary with two subcommands:
+
+### `simulate` — Replay a plan file
+
+```bash
+rotastellar-agent simulate \
+  --plan plan.json \
+  --speed 100 \
+  --api-url https://console.rotastellar.com \
+  --api-key rs_live_...
+```
+
+### `run` — Long-running poll mode
+
+```bash
+rotastellar-agent run \
+  --agent-id sat-25544 \
+  --api-url https://console.rotastellar.com \
+  --api-key rs_live_...
+```
+
+The agent will register, then loop: poll → execute → report → sleep → repeat.

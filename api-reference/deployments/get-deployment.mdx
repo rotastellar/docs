@@ -1,0 +1,77 @@
+---
+title: Get Deployment
+api: GET /api/deployments/{id}
+description: "Get deployment details including plan data and event count"
+---
+
+<Note>
+  **Base URL:** `https://console.rotastellar.com`
+  — Requires session cookie or API key authentication.
+</Note>
+
+## Request
+
+<ParamField path="id" type="string" required>
+  The deployment ID.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl https://console.rotastellar.com/api/deployments/dep-456 \
+  -H "Cookie: session=..."
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "id": "dep-456",
+  "mission_id": "mis-123",
+  "plan_id": "plan-789",
+  "satellite_id": "25544",
+  "status": "completed",
+  "mode": "simulated",
+  "speed_multiplier": 100,
+  "started_at": "2026-03-07T12:00:05Z",
+  "completed_at": "2026-03-07T12:01:32Z",
+  "created_at": "2026-03-07T12:00:00Z",
+  "mission_name": "ISS ML Pipeline",
+  "plan_label": "On-Board ML Inference",
+  "plan_data": {
+    "id": "a92f33e8-...",
+    "satellite": { ... },
+    "preset": { ... },
+    "plan": {
+      "total_duration_s": 1382,
+      "windows_used": 2
+    },
+    "events": [ ... ]
+  },
+  "event_count": 24
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Deployment not found"
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+Includes all fields from [List Deployments](/api-reference/deployments/list-deployments), plus:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `plan_data` | object | Full CAE plan data (satellite, preset, orbital environment, placement decisions, transfer schedule, error budget, events) |
+| `event_count` | number | Total number of execution events recorded |
+
+## Delete / Cancel
+
+```
+DELETE /api/deployments/{id}
+```
+
+- If the deployment is `running`, it is marked as `cancelled`
+- If the deployment is `pending`, it is deleted

@@ -1,0 +1,67 @@
+---
+title: List Deployments
+api: GET /api/deployments
+description: "List all deployments for the authenticated user"
+---
+
+<Note>
+  **Base URL:** `https://console.rotastellar.com`
+  — Requires session cookie or API key authentication.
+</Note>
+
+## Request
+
+No parameters required. Returns the 50 most recent deployments for the authenticated user.
+
+<RequestExample>
+```bash cURL
+curl https://console.rotastellar.com/api/deployments \
+  -H "Cookie: session=..."
+```
+
+```bash API Key
+curl https://console.rotastellar.com/api/deployments \
+  -H "X-API-Key: rs_live_..."
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "deployments": [
+    {
+      "id": "dep-456",
+      "mission_id": "mis-123",
+      "plan_id": "plan-789",
+      "satellite_id": "25544",
+      "status": "completed",
+      "mode": "simulated",
+      "speed_multiplier": 100,
+      "started_at": "2026-03-07T12:00:05Z",
+      "completed_at": "2026-03-07T12:01:32Z",
+      "created_at": "2026-03-07T12:00:00Z",
+      "mission_name": "ISS ML Pipeline",
+      "sat_norad_id": "25544",
+      "plan_label": "On-Board ML Inference"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+## Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Deployment ID |
+| `mission_id` | string | Parent mission ID |
+| `plan_id` | string | Source plan ID |
+| `satellite_id` | string | NORAD catalog ID |
+| `status` | string | `pending`, `dispatched`, `running`, `completed`, `failed`, `cancelled` |
+| `mode` | string | `simulated` or `live` |
+| `speed_multiplier` | number | Simulation speed (simulated mode only) |
+| `started_at` | string | ISO 8601 timestamp when execution started |
+| `completed_at` | string | ISO 8601 timestamp when execution finished |
+| `created_at` | string | ISO 8601 timestamp when deployment was created |
+| `mission_name` | string | Name of the parent mission |
+| `plan_label` | string | Label of the source plan |

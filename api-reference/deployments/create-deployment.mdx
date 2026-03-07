@@ -1,0 +1,75 @@
+---
+title: Create Deployment
+api: POST /api/deployments
+description: "Create a new deployment from a plan"
+---
+
+<Note>
+  **Base URL:** `https://console.rotastellar.com`
+  — Requires session cookie or API key authentication.
+</Note>
+
+## Request
+
+<ParamField body="plan_id" type="string" required>
+  The ID of the plan to deploy. The plan must belong to the authenticated user.
+</ParamField>
+
+<ParamField body="speed_multiplier" type="number">
+  Simulation speed for simulated deployments. Default: `100`. A value of `100` means a 90-minute orbit plays in ~1 minute.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://console.rotastellar.com/api/deployments \
+  -H "Content-Type: application/json" \
+  -H "Cookie: session=..." \
+  -d '{
+    "plan_id": "abc-123",
+    "speed_multiplier": 100
+  }'
+```
+
+```bash API Key
+curl -X POST https://console.rotastellar.com/api/deployments \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: rs_live_..." \
+  -d '{
+    "plan_id": "abc-123"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201 Created
+{
+  "id": "dep-456",
+  "status": "pending"
+}
+```
+
+```json 400 Validation Error
+{
+  "error": "plan_id is required"
+}
+```
+
+```json 404 Not Found
+{
+  "error": "Plan not found"
+}
+```
+</ResponseExample>
+
+## Status Lifecycle
+
+After creation, the deployment status transitions:
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Created, waiting to start |
+| `dispatched` | Assigned to an agent (live mode) |
+| `running` | Agent is executing |
+| `completed` | All steps finished successfully |
+| `failed` | Execution failed |
+| `cancelled` | Cancelled by user |

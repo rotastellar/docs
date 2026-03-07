@@ -1,0 +1,149 @@
+---
+title: Deployment Events
+api: GET /api/deployments/{id}/events
+description: "Get and report execution events for a deployment"
+---
+
+<Note>
+  **Base URL:** `https://console.rotastellar.com`
+</Note>
+
+## List Events
+
+Retrieve execution events for a deployment, ordered chronologically.
+
+```
+GET /api/deployments/{id}/events
+```
+
+**Authentication:** Session cookie (Console UI) or API key.
+
+<ParamField path="id" type="string" required>
+  The deployment ID.
+</ParamField>
+
+<ParamField query="offset" type="number">
+  Pagination offset. Default: `0`.
+</ParamField>
+
+<ParamField query="limit" type="number">
+  Maximum number of events to return. Default: `100`, max: `500`.
+</ParamField>
+
+<RequestExample>
+```bash cURL
+curl "https://console.rotastellar.com/api/deployments/dep-456/events?limit=50" \
+  -H "Cookie: session=..."
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "events": [
+    {
+      "id": "evt-001",
+      "event_type": "job.accepted",
+      "step_id": null,
+      "payload": {
+        "preset": "onboard-ml-inference",
+        "category": "ml-inference",
+        "steps": 4
+      },
+      "event_timestamp": "2026-03-07T12:00:00Z",
+      "created_at": "2026-03-07T12:00:01Z"
+    },
+    {
+      "id": "evt-002",
+      "event_type": "placement.decided",
+      "step_id": "capture",
+      "payload": {
+        "location": "onboard",
+        "reason": "preset_defined"
+      },
+      "event_timestamp": "2026-03-07T12:00:00Z",
+      "created_at": "2026-03-07T12:00:01Z"
+    }
+  ],
+  "total": 24,
+  "offset": 0,
+  "limit": 50
+}
+```
+</ResponseExample>
+
+---
+
+## Report Event
+
+Agents use this endpoint to report execution events during a live deployment.
+
+```
+POST /api/deployments/{id}/events
+```
+
+**Authentication:** API key only (`X-API-Key` + `X-Agent-ID` headers).
+
+<ParamField body="type" type="string" required>
+  The event type. See [Event Types](/agent/protocol#event-types) for the full list.
+</ParamField>
+
+<ParamField body="timestamp" type="string" required>
+  ISO 8601 timestamp of when the event occurred.
+</ParamField>
+
+<ParamField body="job_id" type="string">
+  Job identifier linking related events.
+</ParamField>
+
+<ParamField body="step_id" type="string">
+  Step identifier, if the event relates to a specific compute or transfer step.
+</ParamField>
+
+<ParamField body="payload" type="object">
+  Event-specific data. Contents vary by event type.
+</ParamField>
+
+<RequestExample>
+```bash Agent Event
+curl -X POST https://console.rotastellar.com/api/deployments/dep-456/events \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: rs_live_..." \
+  -H "X-Agent-ID: sat-25544" \
+  -d '{
+    "type": "step.completed",
+    "timestamp": "2026-03-07T14:23:45Z",
+    "job_id": "preset-001",
+    "step_id": "feature_extraction",
+    "payload": {
+      "duration_s": 180,
+      "location": "onboard",
+      "data_output_mb": 10.5
+    }
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201 Created
+{
+  "id": "evt-789"
+}
+```
+
+```json 400 Validation Error
+{
+  "error": "type and timestamp are required"
+}
+```
+</ResponseExample>
+
+## Status Side Effects
+
+Terminal events automatically update the deployment status:
+
+| Event Type | Deployment Status Change |
+|------------|--------------------------|
+| `job.accepted` | `dispatched` → `running` |
+| `job.completed` | → `completed` |
+| `job.failed` | → `failed` |

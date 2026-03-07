@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "RotaStellar API",
+  "name": "RotaStellar Docs",
   "logo": {
     "dark": "/images/logo-dark.png",
     "light": "/images/logo-light.png"
@@ -91,6 +91,23 @@
       ]
     },
     {
+      "group": "Operator Agent",
+      "pages": [
+        "agent/overview",
+        "agent/protocol",
+        "agent/rust-sdk",
+        "agent/quickstart"
+      ]
+    },
+    {
+      "group": "Mission Control",
+      "pages": [
+        "console/overview",
+        "console/getting-started",
+        "console/missions-and-plans"
+      ]
+    },
+    {
       "group": "Orbital Runtime",
       "pages": [
         "runtime/overview",
@@ -125,6 +142,15 @@
         "api-reference/cae/create-plan",
         "api-reference/cae/get-plan",
         "api-reference/cae/get-plan-events"
+      ]
+    },
+    {
+      "group": "Deployments",
+      "pages": [
+        "api-reference/deployments/create-deployment",
+        "api-reference/deployments/list-deployments",
+        "api-reference/deployments/get-deployment",
+        "api-reference/deployments/deployment-events"
       ]
     },
     {
