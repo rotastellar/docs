@@ -1,0 +1,96 @@
+---
+title: Ground Passes
+api: POST /v1/passes
+description: "Compute ground station AOS/LOS windows with elevation data"
+---
+
+<Note>
+  **Base URL:** `https://sim.rotastellar.com`
+  — No API key required.
+</Note>
+
+## Request
+
+<ParamField body="elements" type="object" required>
+  Orbital elements. See [Orbital Elements](/sim/overview#orbital-elements).
+</ParamField>
+
+<ParamField body="start" type="string">
+  ISO 8601 start time. Defaults to current time.
+</ParamField>
+
+<ParamField body="duration_hours" type="number">
+  Prediction window in hours. Default: 24. Max: 72.
+</ParamField>
+
+<ParamField body="min_elevation_deg" type="number">
+  Minimum satellite elevation above horizon (degrees). Default: 5.
+</ParamField>
+
+<ParamField body="ground_stations" type="array">
+  Custom ground station list. Defaults to the 12-station global network (KSAT, NASA, AWS). Each station needs `id`, `name`, `lat`, `lon`.
+</ParamField>
+
+<RequestExample>
+```bash
+curl -X POST https://sim.rotastellar.com/v1/passes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "elements": {
+      "altitude_km": 550,
+      "inclination_deg": 53
+    },
+    "duration_hours": 24,
+    "min_elevation_deg": 10
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "passes": [
+    {
+      "station_id": "gs_svalbard",
+      "station_name": "Svalbard",
+      "provider": "KSAT",
+      "aos": "2026-03-08T12:34:56Z",
+      "los": "2026-03-08T12:45:23Z",
+      "duration_s": 627,
+      "max_elevation_deg": 45.6,
+      "points": [
+        {
+          "timestamp": "2026-03-08T12:34:56Z",
+          "elevation_deg": 10.0,
+          "azimuth_deg": 90.5,
+          "range_km": 2500.1
+        }
+      ]
+    }
+  ],
+  "count": 8,
+  "start": "2026-03-08T12:00:00Z",
+  "duration_hours": 24,
+  "stations_checked": 12
+}
+```
+</ResponseExample>
+
+## Default Ground Stations
+
+The service includes a 12-station global network:
+
+| Station | Location | Provider |
+|---------|----------|----------|
+| Svalbard | 78.2°N, 15.4°E | KSAT |
+| Troll | 72.0°S, 2.5°E | KSAT |
+| Awarua | 46.5°S, 168.4°E | KSAT |
+| Fairbanks | 64.9°N, 147.9°W | NASA |
+| Wallops | 37.9°N, 75.5°W | NASA |
+| McMurdo | 77.9°S, 166.7°E | NASA |
+| Singapore | 1.4°N, 103.8°E | AWS |
+| Bahrain | 26.1°N, 50.5°E | AWS |
+| Oregon | 43.8°N, 120.6°W | AWS |
+| Cape Town | 33.9°S, 18.4°E | AWS |
+| Stockholm | 59.3°N, 18.1°E | AWS |
+| Sydney | 33.9°S, 151.2°E | AWS |

@@ -1,0 +1,36 @@
+---
+title: Service Index
+api: GET /v1
+description: "Returns service metadata and available endpoints"
+---
+
+<Note>
+  **Base URL:** `https://sim.rotastellar.com`
+  — No API key required.
+</Note>
+
+<RequestExample>
+```bash
+curl https://sim.rotastellar.com/v1
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "service": "rotastellar-sim",
+  "version": "1.0.0",
+  "description": "Orbital Simulation — stateless orbital computation for satellite digital twins",
+  "endpoints": [
+    { "method": "POST", "path": "/v1/state", "description": "Compute orbital state at a timestamp" },
+    { "method": "POST", "path": "/v1/state/batch", "description": "Batch orbital state for multiple satellites" },
+    { "method": "POST", "path": "/v1/propagate", "description": "Propagate trajectory over a time window" },
+    { "method": "POST", "path": "/v1/passes", "description": "Compute ground station passes" },
+    { "method": "POST", "path": "/v1/orbital-params", "description": "Derive orbital parameters from altitude" },
+    { "method": "GET", "path": "/v1/templates", "description": "List orbit templates" },
+    { "method": "GET", "path": "/v1/constellation-templates", "description": "List constellation templates" },
+    { "method": "GET", "path": "/v1/ground-stations", "description": "List ground station network" }
+  ]
+}
+```
+</ResponseExample>

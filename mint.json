@@ -117,6 +117,12 @@
       ]
     },
     {
+      "group": "Orbital Sim",
+      "pages": [
+        "sim/overview"
+      ]
+    },
+    {
       "group": "Distributed Compute",
       "pages": [
         "distributed/overview",
@@ -151,6 +157,17 @@
         "api-reference/deployments/list-deployments",
         "api-reference/deployments/get-deployment",
         "api-reference/deployments/deployment-events"
+      ]
+    },
+    {
+      "group": "Sim",
+      "pages": [
+        "api-reference/sim/service-index",
+        "api-reference/sim/get-state",
+        "api-reference/sim/batch-state",
+        "api-reference/sim/propagate",
+        "api-reference/sim/passes",
+        "api-reference/sim/templates"
       ]
     },
     {

@@ -1,0 +1,82 @@
+---
+title: Batch State
+api: POST /v1/state/batch
+description: "Compute orbital state for up to 100 satellites at once"
+---
+
+<Note>
+  **Base URL:** `https://sim.rotastellar.com`
+  — No API key required.
+</Note>
+
+## Request
+
+<ParamField body="satellites" type="array" required>
+  Array of satellite objects, each with `id` (string) and `elements` (orbital elements object). Maximum 100 satellites per request.
+</ParamField>
+
+<ParamField body="timestamp" type="string">
+  ISO 8601 timestamp for computation. Defaults to current time.
+</ParamField>
+
+<RequestExample>
+```bash
+curl -X POST https://sim.rotastellar.com/v1/state/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "satellites": [
+      {
+        "id": "rs-leo-1",
+        "elements": { "altitude_km": 550, "inclination_deg": 51.6, "raan_deg": 0, "mean_anomaly_deg": 0 }
+      },
+      {
+        "id": "rs-leo-2",
+        "elements": { "altitude_km": 550, "inclination_deg": 51.6, "raan_deg": 0, "mean_anomaly_deg": 180 }
+      }
+    ],
+    "timestamp": "2026-03-08T12:00:00Z"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "states": {
+    "rs-leo-1": {
+      "lat": 42.15,
+      "lon": -73.82,
+      "altitude_km": 550.3,
+      "velocity_km_s": 7.59,
+      "in_eclipse": false,
+      "orbit_fraction": 0.234
+    },
+    "rs-leo-2": {
+      "lat": -38.90,
+      "lon": 106.18,
+      "altitude_km": 550.1,
+      "velocity_km_s": 7.59,
+      "in_eclipse": true,
+      "orbit_fraction": 0.734
+    }
+  },
+  "timestamp": "2026-03-08T12:00:00Z",
+  "count": 2
+}
+```
+
+```json 400 Too Many
+{
+  "error": "too_many",
+  "message": "Maximum 100 satellites per batch request"
+}
+```
+</ResponseExample>
+
+## Errors
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 400 | `invalid_request` | `satellites` array missing or empty |
+| 400 | `too_many` | More than 100 satellites |
+| 400 | `invalid_timestamp` | Invalid ISO 8601 timestamp |

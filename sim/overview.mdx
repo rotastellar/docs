@@ -1,0 +1,84 @@
+---
+title: Orbital Sim
+description: "Stateless orbital computation for satellite digital twins"
+---
+
+The **Orbital Sim** service provides real-time satellite position computation, trajectory propagation, eclipse detection, and ground station pass prediction. It powers the RotaStellar agent constellation and planned asset live tracking.
+
+## Base URL
+
+```
+https://sim.rotastellar.com
+```
+
+## Capabilities
+
+| Capability | Endpoint | Description |
+|-----------|----------|-------------|
+| Orbital state | `POST /v1/state` | Position, velocity, eclipse at any timestamp |
+| Batch state | `POST /v1/state/batch` | Up to 100 satellites in one call |
+| Trajectory | `POST /v1/propagate` | Full orbit path over up to 48 hours |
+| Ground passes | `POST /v1/passes` | AOS/LOS windows with elevation data |
+| Orbit templates | `GET /v1/templates` | Predefined orbit profiles (LEO, SSO, MEO, GEO) |
+| Constellation templates | `GET /v1/constellation-templates` | Walker Star, Polar Ring patterns |
+| Ground stations | `GET /v1/ground-stations` | 12-station global network |
+
+## Quick Example
+
+```bash
+curl -X POST https://sim.rotastellar.com/v1/state \
+  -H "Content-Type: application/json" \
+  -d '{
+    "elements": {
+      "altitude_km": 550,
+      "inclination_deg": 53
+    }
+  }'
+```
+
+```json
+{
+  "lat": 42.15,
+  "lon": -73.82,
+  "altitude_km": 550.3,
+  "velocity_km_s": 7.59,
+  "in_eclipse": false,
+  "orbit_fraction": 0.234,
+  "timestamp": "2026-03-08T12:00:00Z"
+}
+```
+
+## Orbital Elements
+
+All computation endpoints accept an `elements` object. You must provide either `mean_motion` (revolutions/day) or `altitude_km`.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `altitude_km` | number | * | — | Orbit altitude in km |
+| `mean_motion` | number | * | — | Revolutions per day (alternative to altitude) |
+| `inclination_deg` | number | yes | — | Orbital inclination in degrees |
+| `eccentricity` | number | no | 0.0001 | Orbit eccentricity |
+| `raan_deg` | number | no | 0 | Right ascension of ascending node |
+| `arg_perigee_deg` | number | no | 90 | Argument of perigee |
+| `mean_anomaly_deg` | number | no | 0 | Mean anomaly at epoch |
+| `epoch` | string | no | now | ISO 8601 timestamp of elements |
+| `bstar` | number | no | 0.00003 | Atmospheric drag term |
+
+<Note>
+  Either `altitude_km` or `mean_motion` is required, but not both.
+</Note>
+
+## Access
+
+The Sim service uses CORS-based access control. Allowed origins include `rotastellar.com`, `console.rotastellar.com`, `runtime.rotastellar.com`, and `localhost:3000`. No API key is required.
+
+## API Reference
+
+See the full API reference for each endpoint:
+
+- [Service Index](/api-reference/sim/service-index)
+- [Get State](/api-reference/sim/get-state)
+- [Batch State](/api-reference/sim/batch-state)
+- [Propagate](/api-reference/sim/propagate)
+- [Ground Passes](/api-reference/sim/passes)
+- [Templates](/api-reference/sim/templates)

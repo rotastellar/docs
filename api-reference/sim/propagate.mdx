@@ -1,0 +1,91 @@
+---
+title: Propagate Trajectory
+api: POST /v1/propagate
+description: "Generate full satellite trajectory as a time series over up to 48 hours"
+---
+
+<Note>
+  **Base URL:** `https://sim.rotastellar.com`
+  — No API key required.
+</Note>
+
+## Request
+
+<ParamField body="elements" type="object" required>
+  Orbital elements. See [Orbital Elements](/sim/overview#orbital-elements).
+</ParamField>
+
+<ParamField body="start" type="string">
+  ISO 8601 start time. Defaults to current time.
+</ParamField>
+
+<ParamField body="end" type="string">
+  ISO 8601 end time. Default: start + 6 hours. Max window: 48 hours.
+</ParamField>
+
+<ParamField body="step_s" type="number">
+  Seconds between trajectory points. Default: 60. Max 5,000 total points.
+</ParamField>
+
+<RequestExample>
+```bash
+curl -X POST https://sim.rotastellar.com/v1/propagate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "elements": {
+      "altitude_km": 550,
+      "inclination_deg": 53
+    },
+    "start": "2026-03-08T12:00:00Z",
+    "end": "2026-03-08T14:00:00Z",
+    "step_s": 60
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "trajectory": [
+    {
+      "t": "2026-03-08T12:00:00Z",
+      "lat": 42.15,
+      "lon": -73.82,
+      "altitude_km": 550.3,
+      "velocity_km_s": 7.59,
+      "in_eclipse": false,
+      "orbit_fraction": 0.000
+    },
+    {
+      "t": "2026-03-08T12:01:00Z",
+      "lat": 42.58,
+      "lon": -72.14,
+      "altitude_km": 550.3,
+      "velocity_km_s": 7.59,
+      "in_eclipse": false,
+      "orbit_fraction": 0.010
+    }
+  ],
+  "count": 121,
+  "start": "2026-03-08T12:00:00Z",
+  "end": "2026-03-08T14:00:00Z",
+  "step_s": 60
+}
+```
+
+```json 400 Range Too Large
+{
+  "error": "range_too_large",
+  "message": "Propagation window exceeds 48 hours"
+}
+```
+</ResponseExample>
+
+## Constraints
+
+| Constraint | Limit |
+|-----------|-------|
+| Max window | 48 hours |
+| Max points | 5,000 |
+| Default step | 60 seconds |
+| Default window | 6 hours |

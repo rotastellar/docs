@@ -1,0 +1,144 @@
+---
+title: Templates
+api: GET /v1/templates
+description: "Predefined orbit and constellation templates"
+---
+
+<Note>
+  **Base URL:** `https://sim.rotastellar.com`
+  — No API key required.
+</Note>
+
+## Orbit Templates
+
+`GET /v1/templates` returns predefined orbit profiles.
+
+<RequestExample>
+```bash Orbit Templates
+curl https://sim.rotastellar.com/v1/templates
+```
+
+```bash Constellation Templates
+curl https://sim.rotastellar.com/v1/constellation-templates
+```
+
+```bash Expand Constellation
+curl -X POST https://sim.rotastellar.com/v1/constellation-templates/walker-star-6-3/expand \
+  -H "Content-Type: application/json" \
+  -d '{"base_orbit": "leo-standard"}'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 Orbit Templates
+[
+  {
+    "id": "leo-standard",
+    "name": "LEO Standard",
+    "altitude_km": 550,
+    "inclination_deg": 53,
+    "eccentricity": 0.0001,
+    "description": "Standard low-Earth orbit at 550 km"
+  },
+  {
+    "id": "leo-low",
+    "name": "LEO Low",
+    "altitude_km": 420,
+    "inclination_deg": 51.6,
+    "eccentricity": 0.0002,
+    "description": "Low LEO at ISS altitude"
+  },
+  {
+    "id": "sun-sync-500",
+    "name": "Sun-Synchronous 500km",
+    "altitude_km": 500,
+    "inclination_deg": 97.4,
+    "eccentricity": 0.0001,
+    "description": "Dawn-dusk sun-synchronous orbit"
+  },
+  {
+    "id": "sun-sync-700",
+    "name": "Sun-Synchronous 700km",
+    "altitude_km": 700,
+    "inclination_deg": 98.2,
+    "eccentricity": 0.0001,
+    "description": "Higher sun-synchronous orbit"
+  },
+  {
+    "id": "polar-800",
+    "name": "Polar 800km",
+    "altitude_km": 800,
+    "inclination_deg": 98.7,
+    "eccentricity": 0.0001,
+    "description": "Near-polar orbit"
+  },
+  {
+    "id": "meo-navigation",
+    "name": "MEO Navigation",
+    "altitude_km": 20200,
+    "inclination_deg": 55,
+    "eccentricity": 0.001,
+    "description": "Medium Earth orbit (GPS/Galileo)"
+  },
+  {
+    "id": "geo-comms",
+    "name": "Geostationary",
+    "altitude_km": 35786,
+    "inclination_deg": 0,
+    "eccentricity": 0.0001,
+    "description": "Geostationary orbit"
+  }
+]
+```
+
+```json 200 Constellation Templates
+[
+  {
+    "id": "walker-star-6-3",
+    "name": "Walker Star 6/3/1",
+    "satellite_count": 6,
+    "planes": 3,
+    "sats_per_plane": 2,
+    "base_orbit": "leo-standard",
+    "description": "6 satellites across 3 orbital planes"
+  },
+  {
+    "id": "walker-star-12-4",
+    "name": "Walker Star 12/4/1",
+    "satellite_count": 12,
+    "planes": 4,
+    "sats_per_plane": 3,
+    "base_orbit": "leo-standard",
+    "description": "12 satellites across 4 planes"
+  },
+  {
+    "id": "polar-ring-4",
+    "name": "Polar Ring",
+    "satellite_count": 4,
+    "planes": 2,
+    "sats_per_plane": 2,
+    "base_orbit": "sun-sync-500",
+    "description": "4 satellites in 2 sun-synchronous planes"
+  },
+  {
+    "id": "single-plane-3",
+    "name": "Single Plane Trio",
+    "satellite_count": 3,
+    "planes": 1,
+    "sats_per_plane": 3,
+    "base_orbit": "leo-standard",
+    "description": "3 satellites in a single plane"
+  }
+]
+```
+</ResponseExample>
+
+## Expand Constellation
+
+`POST /v1/constellation-templates/:id/expand` generates per-satellite orbital elements from a constellation template.
+
+<ParamField body="base_orbit" type="string">
+  Override the template's base orbit. Must be a valid orbit template ID (e.g., `leo-standard`, `sun-sync-500`).
+</ParamField>
+
+The response includes an `orbits` array with fully resolved orbital elements for each satellite, including computed RAAN spacing and mean anomaly offsets.
