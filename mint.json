@@ -141,6 +141,12 @@
       ]
     },
     {
+      "group": "Overview",
+      "pages": [
+        "api-reference/directory"
+      ]
+    },
+    {
       "group": "CAE",
       "pages": [
         "api-reference/cae/service-index",

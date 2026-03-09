@@ -1,0 +1,138 @@
+---
+title: API Directory
+description: "Consolidated directory of all RotaStellar public APIs"
+---
+
+# API Directory
+
+RotaStellar exposes three categories of public APIs across multiple services. Each service is independently deployed and has its own base URL.
+
+<Note>
+  Internal Console APIs (session-authenticated) are documented in **Mission Control > Admin > API Directory** for authorized operators only.
+</Note>
+
+---
+
+## External APIs
+
+Public APIs requiring a Bearer API key (`rs_...`). Available to all developers.
+
+### Satellite Intelligence API
+
+**Base URL:** `https://api.rotastellar.com/v1`
+**Auth:** Bearer API key
+**Docs:** [Full reference →](/api-reference)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/satellites/active` | Active satellites with live orbital data |
+| GET | `/satellites` | List satellites with filters |
+| GET | `/satellites/{id}` | Satellite details |
+| GET | `/satellites/{id}/position` | Current position (lat/lon/alt) |
+| GET | `/satellites/{id}/orbit` | Orbital parameters |
+| GET | `/satellites/{id}/visibility` | Ground station visibility |
+| GET | `/satellites/{id}/passes` | Predict ground passes |
+| GET | `/satellites/{id}/feasibility` | Compute feasibility analysis |
+| GET | `/satellites/{id}/latency` | Communication latency analysis |
+| GET | `/conjunctions` | Conjunction (collision) analysis |
+| GET | `/patterns` | Anomaly and maneuver detection |
+| GET | `/ground-stations` | Ground station network (12 stations) |
+
+**Planning endpoints:**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/planning/analyze` | Feasibility analysis |
+| POST | `/planning/thermal` | Thermal simulation |
+| POST | `/planning/latency` | Latency simulation |
+
+<Tip>
+  **15 endpoints** — Intelligence + Planning
+</Tip>
+
+---
+
+### Constraint-Aware Execution (CAE)
+
+**Base URL:** `https://rotastellar-cae.subhadip-mitra.workers.dev`
+**Auth:** None (CORS-restricted to allowed origins)
+**Docs:** [CAE reference →](/api-reference/cae/service-index)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/v1` | Service index and capabilities |
+| GET | `/v1/presets` | List workload presets |
+| POST | `/v1/plan` | Create execution plan (single satellite) |
+| GET | `/v1/plan/{id}` | Retrieve a plan |
+| GET | `/v1/plan/{id}/events` | Simulated execution events |
+| POST | `/v1/ocu/negotiate` | OCU Negotiator — match workload to fleet |
+| GET | `/v1/ocu/summary/{busClass}` | OCU capacity for a satellite class |
+| POST | `/v1/hazards` | Predict orbital hazards + checkpoints |
+| POST | `/v1/constellation/plan` | Multi-satellite DAG planning with ISL |
+| POST | `/v1/constellation/pareto` | Fleet-level Pareto frontier planning |
+| GET | `/v1/metrics` | Worker performance metrics |
+
+<Tip>
+  **11 endpoints** — Orbital compute orchestration
+</Tip>
+
+---
+
+### Orbital Simulation (Sim)
+
+**Base URL:** `https://sim.rotastellar.com`
+**Auth:** None (CORS-restricted)
+**Docs:** [Sim reference →](/api-reference/sim/service-index)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/v1/state` | Orbital state at a timestamp |
+| POST | `/v1/state/batch` | Batch state for multiple satellites |
+| POST | `/v1/propagate` | Full trajectory over time window |
+| POST | `/v1/passes` | Ground station pass computation |
+| POST | `/v1/orbital-params` | Orbital parameters from altitude |
+| GET | `/v1/templates` | Orbit templates |
+| GET | `/v1/constellation-templates` | Constellation patterns |
+| POST | `/v1/constellation-templates/{id}/expand` | Generate satellite definitions |
+| GET | `/v1/ground-stations` | Ground station network |
+
+<Tip>
+  **9 endpoints** — Stateless orbital computation
+</Tip>
+
+---
+
+## Agent Protocol APIs
+
+APIs used by the RotaStellar Operator Agent running on satellites (real or simulated). Authenticated via API key + Agent-ID headers.
+
+**Base URL:** Console URL (e.g., `https://rotastellar.com`)
+**Auth:** `X-API-Key` + `X-Agent-ID` headers
+**Docs:** [Agent Protocol →](/agent/protocol)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/agent/register` | Register agent with Console |
+| GET | `/api/agent/workloads` | Poll for pending deployments |
+| POST | `/api/agent/telemetry` | Report health/status heartbeat |
+| POST | `/api/deployments/{id}/events` | Report execution events |
+
+<Tip>
+  **4 endpoints** — Pull-based satellite agent protocol
+</Tip>
+
+---
+
+## Summary
+
+| Service | Endpoints | Auth Method | Base URL |
+|---------|-----------|-------------|----------|
+| Intelligence API | 15 | Bearer API key | `api.rotastellar.com/v1` |
+| CAE | 11 | CORS-restricted | `rotastellar-cae.workers.dev` |
+| Sim | 9 | CORS-restricted | `sim.rotastellar.com` |
+| Agent Protocol | 4 | API key + Agent-ID | Console URL |
+| **Total** | **39** | | |
+
+<Info>
+  Internal Console APIs (88 routes for auth, billing, admin, missions, etc.) are documented in the Console's **Admin > API Directory** page, accessible to authenticated administrators only.
+</Info>
