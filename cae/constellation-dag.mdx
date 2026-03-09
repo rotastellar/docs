@@ -1,0 +1,202 @@
+---
+title: Constellation DAG
+description: "I-3 — multi-satellite workflow orchestration with ISL routing"
+---
+
+# Constellation DAG
+
+Single-satellite planning assigns steps to orbital windows on one spacecraft. Constellation DAG planning distributes a workload across multiple satellites, routing intermediate data through inter-satellite links (ISL) and ground relays to minimize end-to-end latency.
+
+<Info>
+  **When to use this** — Any workload that benefits from parallelism across satellites, or where a single satellite lacks the resources (compute, power, storage, contact time) to complete the job within the deadline.
+</Info>
+
+## Architecture
+
+Constellation planning is built on two core components:
+
+### ContactGraph
+
+The ContactGraph builds a time-expanded graph of all communication opportunities across the fleet within the planning horizon.
+
+| Capability | Details |
+|-----------|---------|
+| ISL detection | Line-of-sight between satellite pairs, accounting for Earth obstruction |
+| Ground pass detection | Visibility windows to all 12 ground stations per satellite |
+| Routing algorithm | Time-expanded Dijkstra — finds shortest-latency path through ISL and ground hops |
+| Fleet construction | `buildContactGraph` generates the full fleet graph from TLE data |
+
+The graph edges are weighted by link capacity (data rate x duration) and propagation delay. Dijkstra finds the minimum-latency path for transferring data from any satellite to any other satellite or ground station.
+
+### ConstellationPlacer
+
+The placer runs a 5-phase algorithm to assign steps to satellites:
+
+| Phase | Description |
+|-------|-------------|
+| 1. Preparation | Propagate orbits, build contact graph, compute per-satellite resource envelopes |
+| 2. Greedy placement | Score each satellite for each step (resource fit, data locality, contact opportunity) and assign greedily by priority |
+| 3. Replication | For critical steps, place redundant copies on backup satellites for fault tolerance |
+| 4. Schedule assembly | Build the final timeline with ISL transfer segments between cross-satellite dependencies |
+| 5. Metrics | Compute critical path, reliability estimate, and resource utilization |
+
+**Scoring** considers four factors: available compute capacity, proximity to upstream data, upcoming contact windows, and current battery state-of-charge.
+
+<Note>
+  For fleets of 10 or more satellites, the placer uses a k-d tree spatial index to accelerate nearest-neighbor queries during ISL detection. This keeps planning time sub-linear with fleet size.
+</Note>
+
+## ISL Transfer Segments
+
+When two dependent steps are placed on different satellites, the planner inserts ISL transfer segments. These are scheduled during mutual visibility windows and include FEC overhead.
+
+```json
+{
+  "type": "isl_transfer",
+  "from_satellite": "25544",
+  "to_satellite": "48274",
+  "data_mb": 36.75,
+  "fec_overhead_mb": 1.84,
+  "link_budget": {
+    "distance_km": 1240,
+    "data_rate_mbps": 10,
+    "duration_s": 31
+  },
+  "window": {
+    "start": "2026-03-10T08:12:00Z",
+    "end": "2026-03-10T08:18:30Z"
+  }
+}
+```
+
+If no direct ISL path exists, the contact graph routes through intermediate satellites or ground relay (satellite A downlinks to a ground station, which uplinks to satellite B during a later pass).
+
+## API Usage
+
+### Create Constellation Plan
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/constellation/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "satellite_ids": ["25544", "48274", "55909"],
+    "custom_job": {
+      "name": "Distributed EO Pipeline",
+      "steps": [
+        {
+          "id": "capture_1",
+          "name": "Capture Region A",
+          "location": "onboard",
+          "compute_s": 60,
+          "output_mb": 2000,
+          "depends_on": []
+        },
+        {
+          "id": "capture_2",
+          "name": "Capture Region B",
+          "location": "onboard",
+          "compute_s": 60,
+          "output_mb": 2000,
+          "depends_on": []
+        },
+        {
+          "id": "merge",
+          "name": "Merge and Mosaic",
+          "location": "onboard",
+          "compute_s": 180,
+          "input_mb": 4000,
+          "output_mb": 500,
+          "depends_on": ["capture_1", "capture_2"]
+        },
+        {
+          "id": "downlink",
+          "name": "Deliver Results",
+          "location": "ground",
+          "depends_on": ["merge"]
+        }
+      ],
+      "policy": { "objective": "min_latency", "deadline_orbits": 6 }
+    }
+  }'
+```
+
+### Request Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `satellite_ids` | string[] | Yes | NORAD catalog IDs of satellites in the constellation |
+| `preset_id` | string | No | Use a preset workload (mutually exclusive with `custom_job`) |
+| `custom_job` | object | No | Custom DAG definition |
+| `policy.objective` | string | No | `min_latency`, `balanced`, `max_reliability` |
+| `policy.deadline_orbits` | number | No | Maximum orbits to complete the workflow |
+| `replication_factor` | number | No | Number of redundant copies for critical steps (default: 1) |
+
+### Response Structure
+
+The response extends the standard plan format with constellation-specific fields:
+
+```json
+{
+  "id": "const-7b2e4f...",
+  "constellation": {
+    "satellites_used": 3,
+    "satellites_available": 3,
+    "isl_transfers": 2,
+    "ground_relays": 0
+  },
+  "critical_path": {
+    "steps": ["capture_1", "isl_transfer_1", "merge", "downlink"],
+    "duration_s": 4320,
+    "bottleneck": "isl_transfer_1"
+  },
+  "metrics": {
+    "total_compute_s": 300,
+    "total_transfer_s": 186,
+    "isl_data_mb": 2038.5,
+    "ground_data_mb": 525,
+    "reliability": 0.964,
+    "satellites_used": 3
+  },
+  "placements": [
+    { "step_id": "capture_1", "satellite_id": "25544", "reason": "best_resource_fit" },
+    { "step_id": "capture_2", "satellite_id": "48274", "reason": "best_resource_fit" },
+    { "step_id": "merge", "satellite_id": "55909", "reason": "data_locality" }
+  ],
+  "plan": { ... },
+  "events": [ ... ]
+}
+```
+
+## Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `critical_path.duration_s` | Longest sequential chain through the DAG including transfers |
+| `critical_path.bottleneck` | The step or transfer that dominates the critical path |
+| `satellites_used` | Number of satellites with at least one assigned step |
+| `isl_transfers` | Number of inter-satellite link transfers in the plan |
+| `reliability` | Combined delivery confidence across all paths |
+
+## Console Integration
+
+The Console displays constellation plans in a **DAG tab** powered by React Flow:
+
+- Each satellite is a swim lane
+- Steps are nodes, colored by satellite assignment
+- ISL transfers appear as animated edges between lanes
+- The critical path is highlighted
+- Clicking a node shows step detail, resource usage, and the scoring breakdown from the placement phase
+
+<Warning>
+  Constellation planning requires valid TLE data for all satellites in the request. If any satellite ID is not found in the CelesTrak catalog, the request returns a 400 error with the missing IDs listed.
+</Warning>
+
+<CardGroup cols={2}>
+  <Card title="Pareto Planning" icon="chart-scatter" href="/cae/pareto-planning">
+    Multi-objective optimization for constellation plans
+  </Card>
+  <Card title="Agent Protocol" icon="satellite" href="/agent/protocol">
+    Agent constellation mode for multi-satellite execution
+  </Card>
+</CardGroup>

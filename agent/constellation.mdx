@@ -1,0 +1,161 @@
+---
+title: Constellation Execution
+description: "Multi-satellite DAG orchestration with ISL coordination and automatic failover"
+---
+
+# Constellation Execution
+
+**WS4 Agent Mode**
+
+Constellation Execution extends the Operator Agent to orchestrate workloads across multiple satellites. A DAG-based execution plan is distributed across the constellation, with steps assigned to individual satellites and data transferred between them via inter-satellite links (ISLs). The agent runtime handles step lifecycle, ISL coordination, and automatic failover when a satellite becomes unhealthy.
+
+<Info>
+  Constellation mode requires a multi-satellite deployment created from a constellation DAG plan. See [CAE Constellation DAG](/cae/constellation-dag) for how plans are generated.
+</Info>
+
+## ConstellationState
+
+Each agent participating in a constellation deployment maintains a `ConstellationState` that tracks its view of the distributed execution.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `assigned_steps` | map | Steps assigned to this satellite, keyed by step ID |
+| `active_transfers` | array | ISL transfers currently in progress |
+| `completed_steps` | set | Step IDs that have completed successfully |
+| `failed_over_steps` | set | Step IDs that were reassigned due to failover |
+
+## Step Lifecycle
+
+Each step in the constellation DAG follows a deterministic state machine:
+
+```
+Pending --> Executing --> Completed
+                |
+                v
+           FailedOver
+```
+
+| State | Description |
+|-------|-------------|
+| `Pending` | Step assigned but waiting for dependencies or resources |
+| `Executing` | Step actively running on the assigned satellite |
+| `Completed` | Step finished successfully, output available for downstream steps |
+| `FailedOver` | Step reassigned to another satellite due to health check failure |
+
+When a step completes, its output data is made available for dependent steps. If the dependent step is assigned to a different satellite, an ISL transfer is initiated automatically.
+
+## Automatic Failover
+
+The agent runtime continuously monitors satellite health during constellation execution. A failover is triggered when any of the following conditions are detected:
+
+| Condition | Threshold | Description |
+|-----------|-----------|-------------|
+| Battery critical | < 10% | Insufficient power to complete compute step |
+| Thermal exceedance | > 75C | Risk of hardware damage or thermal shutdown |
+| Compute unavailable | Battery < 15% | Not enough power headroom for sustained compute |
+
+<Warning>
+  Failover reassigns the step to the next eligible satellite in the DAG. If no eligible satellite is available, the step is marked as failed and the constellation plan terminates with a partial completion status.
+</Warning>
+
+When a failover occurs, the following sequence executes:
+
+1. The current satellite emits `constellation.failover` with the reason
+2. The orchestrator selects an alternate satellite from the DAG
+3. The step is reassigned and a `constellation.failover_acknowledged` event is emitted
+4. The new satellite begins execution from the last checkpoint (if available)
+
+## ISL Transfer Lifecycle
+
+Data transfers between satellites follow a multi-hop model. Each hop represents a direct ISL link between two satellites in range.
+
+```
+started --> hop_completed (x N) --> completed + quality_report
+```
+
+| State | Description |
+|-------|-------------|
+| `started` | Transfer initiated between source and destination satellites |
+| `hop_completed` | A single ISL hop finished, includes quality metrics for that segment |
+| `completed` | All hops finished, data delivered to destination satellite |
+| `quality_report` | Aggregate link quality metrics for the full transfer path |
+
+### ISL Link Quality Model
+
+Link quality between any two satellites is computed dynamically based on distance and eclipse state:
+
+| Parameter | Formula / Value |
+|-----------|----------------|
+| Distance factor | `1 - (distance_km / 5000) * 0.6` |
+| Eclipse penalty | `0.9` (applied when either endpoint is in eclipse) |
+| Effective bandwidth | `100 Mbps * quality` |
+| Propagation latency | `distance_km / c + 2ms` (where c = 299,792 km/s) |
+| Max range | 5,000 km (quality = 0 beyond this) |
+
+<Note>
+  The 2ms additional latency accounts for onboard processing and protocol overhead at each hop. For multi-hop transfers, latency is cumulative across all hops.
+</Note>
+
+**Example:** Two satellites 2,000 km apart, one in eclipse:
+
+- Distance factor: `1 - (2000 / 5000) * 0.6 = 0.76`
+- Eclipse penalty: `0.76 * 0.9 = 0.684`
+- Effective bandwidth: `100 * 0.684 = 68.4 Mbps`
+- Propagation latency: `2000 / 299792 + 0.002 = 8.67ms`
+
+## Event Enrichment
+
+All constellation events are enriched with real-time satellite telemetry at the moment the event is generated:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `actual_battery_percent` | number | Battery level at event time |
+| `actual_temperature_c` | number | Temperature at event time |
+| `lat` | number | Geodetic latitude |
+| `lon` | number | Geodetic longitude |
+| `altitude_km` | number | Altitude above Earth surface |
+| `in_eclipse` | boolean | Whether the satellite is in Earth's shadow |
+
+This telemetry is sourced from the `SimulatedSatellite` executor, which integrates with the [Simulation Sessions](/sim/sessions) service for subsystem state.
+
+## Event Types
+
+### Constellation Events
+
+| Event | Description | Key Payload Fields |
+|-------|-------------|--------------------|
+| `constellation.step_assigned` | Step assigned to a satellite | `step_id`, `satellite_id`, `dependencies` |
+| `constellation.step_started` | Step execution begins | `step_id`, `satellite_id` |
+| `constellation.step_completed` | Step finished successfully | `step_id`, `duration_s`, `data_output_mb` |
+| `constellation.failover` | Step failover initiated | `step_id`, `from_satellite`, `reason` |
+| `constellation.failover_acknowledged` | Failover accepted by new satellite | `step_id`, `to_satellite` |
+| `constellation.satellite_complete` | All steps on a satellite are done | `satellite_id`, `steps_completed`, `steps_failed_over` |
+
+### ISL Events
+
+| Event | Description | Key Payload Fields |
+|-------|-------------|--------------------|
+| `isl_transfer.started` | ISL data transfer initiated | `from`, `to`, `data_mb`, `hop_count` |
+| `isl_transfer.hop_completed` | Single hop finished | `from`, `to`, `hop_index`, `quality`, `latency_ms` |
+| `isl_transfer.completed` | Full transfer delivered | `from`, `to`, `total_duration_s`, `data_mb` |
+| `isl_transfer.quality_report` | Aggregate path quality | `avg_quality`, `min_quality`, `total_latency_ms`, `effective_bandwidth_mbps` |
+
+## Integration with SimulatedSatellite
+
+In simulation mode, the constellation executor uses the `SimulatedSatellite` backend to model each satellite's behavior. This executor:
+
+- Maintains per-satellite subsystem state (battery, thermal, memory, CPU)
+- Applies realistic charge/discharge and thermal models per tick
+- Evaluates failover conditions against live subsystem values
+- Generates ISL quality metrics from actual propagated positions
+
+The `SimulatedSatellite` executor connects to the Sim service's [session API](/sim/sessions) to persist and retrieve constellation state.
+
+<CardGroup cols={2}>
+  <Card title="Agent Protocol" icon="file-contract" href="/agent/protocol">
+    Full protocol specification for agent communication
+  </Card>
+  <Card title="CAE Constellation DAG" icon="diagram-project" href="/cae/constellation-dag">
+    How constellation execution plans are generated
+  </Card>
+</CardGroup>

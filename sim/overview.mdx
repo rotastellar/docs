@@ -22,6 +22,9 @@ https://sim.rotastellar.com
 | Orbit templates | `GET /v1/templates` | Predefined orbit profiles (LEO, SSO, MEO, GEO) |
 | Constellation templates | `GET /v1/constellation-templates` | Walker Star, Polar Ring patterns |
 | Ground stations | `GET /v1/ground-stations` | 12-station global network |
+| Sessions | `POST /v1/sessions` | Stateful constellation simulation |
+| Tick simulation | `POST /v1/sessions/:id/tick` | Advance time with subsystem updates |
+| Fault injection | `POST /v1/sessions/:id/fault` | Inject hardware/environment faults |
 
 ## Quick Example
 
@@ -72,6 +75,10 @@ All computation endpoints accept an `elements` object. You must provide either `
 
 The Sim service uses CORS-based access control. Allowed origins include `rotastellar.com`, `console.rotastellar.com`, `runtime.rotastellar.com`, and `localhost:3000`. No API key is required.
 
+## Simulation Sessions (v1.1.0)
+
+CAE v1.1.0 adds **stateful simulation sessions** for constellation-level testing with subsystem tracking, ISL link quality modeling, and fault injection. See [Simulation Sessions](/sim/sessions) for full documentation.
+
 ## API Reference
 
 See the full API reference for each endpoint:
@@ -82,3 +89,7 @@ See the full API reference for each endpoint:
 - [Propagate](/api-reference/sim/propagate)
 - [Ground Passes](/api-reference/sim/passes)
 - [Templates](/api-reference/sim/templates)
+- [Create Session](/api-reference/sim/create-session)
+- [Get Session State](/api-reference/sim/get-session)
+- [Tick Session](/api-reference/sim/tick-session)
+- [Inject Fault](/api-reference/sim/inject-fault)

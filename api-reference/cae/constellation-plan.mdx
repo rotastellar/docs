@@ -1,0 +1,84 @@
+---
+title: Plan Constellation DAG
+api: POST /v1/constellation/plan
+description: "Generates an optimized execution plan (DAG) for a satellite constellation workload"
+---
+
+<Note>
+  **Base URL:** `https://rotastellar-cae.subhadip-mitra.workers.dev`
+  — No API key required. CORS-validated.
+</Note>
+
+<RequestExample>
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/constellation/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "fleet": [
+      {
+        "norad_id": "99901",
+        "name": "RS-LEO-1",
+        "role": "compute",
+        "orbit": { "altitude_km": 550, "inclination_deg": 53 }
+      },
+      {
+        "norad_id": "99902",
+        "name": "RS-LEO-2",
+        "role": "compute",
+        "orbit": { "altitude_km": 550, "inclination_deg": 53 }
+      },
+      {
+        "norad_id": "99903",
+        "name": "RS-LEO-3",
+        "role": "aggregator",
+        "orbit": { "altitude_km": 550, "inclination_deg": 53 }
+      }
+    ],
+    "preset_id": "split-learning"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "plan_id": "plan_cst_7f3a1b",
+  "preset_id": "split-learning",
+  "metrics": {
+    "critical_path_s": 342,
+    "satellites_used": 3,
+    "isl_transfers": 4,
+    "reliability": 0.973
+  },
+  "steps": [
+    {
+      "step": 1,
+      "satellite": "RS-LEO-1",
+      "task": "forward_pass_split",
+      "duration_s": 45,
+      "depends_on": []
+    },
+    {
+      "step": 2,
+      "satellite": "RS-LEO-2",
+      "task": "forward_pass_split",
+      "duration_s": 45,
+      "depends_on": []
+    },
+    {
+      "step": 3,
+      "satellite": "RS-LEO-3",
+      "task": "aggregate_activations",
+      "duration_s": 30,
+      "depends_on": [1, 2],
+      "isl_route": ["RS-LEO-1 → RS-LEO-3", "RS-LEO-2 → RS-LEO-3"]
+    }
+  ],
+  "isl_routing": [
+    { "from": "RS-LEO-1", "to": "RS-LEO-3", "latency_ms": 12, "bandwidth_mbps": 100 },
+    { "from": "RS-LEO-2", "to": "RS-LEO-3", "latency_ms": 14, "bandwidth_mbps": 100 }
+  ]
+}
+```
+</ResponseExample>

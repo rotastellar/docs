@@ -1,0 +1,66 @@
+---
+title: Predict Hazards
+api: POST /v1/hazards
+description: "Predicts orbital hazards and generates a checkpoint schedule for a satellite"
+---
+
+<Note>
+  **Base URL:** `https://rotastellar-cae.subhadip-mitra.workers.dev`
+  — No API key required. CORS-validated.
+</Note>
+
+<RequestExample>
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/hazards \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "satellite_id": "25544",
+    "prediction_hours": 24
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "hazards": [
+    {
+      "type": "eclipse_entry",
+      "start_epoch": "2026-03-10T14:22:00Z",
+      "duration_s": 2160,
+      "severity": 0.6
+    },
+    {
+      "type": "saa_crossing",
+      "start_epoch": "2026-03-10T16:45:00Z",
+      "duration_s": 480,
+      "severity": 0.8
+    },
+    {
+      "type": "eclipse_entry",
+      "start_epoch": "2026-03-10T15:54:00Z",
+      "duration_s": 2100,
+      "severity": 0.6
+    },
+    {
+      "type": "thermal_peak",
+      "start_epoch": "2026-03-11T02:10:00Z",
+      "duration_s": 300,
+      "severity": 0.4
+    }
+  ],
+  "checkpoint_schedule": [
+    { "epoch": "2026-03-10T14:18:00Z", "reason": "pre_eclipse" },
+    { "epoch": "2026-03-10T16:40:00Z", "reason": "pre_saa" },
+    { "epoch": "2026-03-11T02:05:00Z", "reason": "pre_thermal" }
+  ],
+  "summary": {
+    "hazards_count": 4,
+    "checkpoints_count": 3,
+    "max_safe_window_s": 2400,
+    "overhead_fraction": 0.05
+  }
+}
+```
+</ResponseExample>

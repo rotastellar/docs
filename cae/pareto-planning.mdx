@@ -1,0 +1,156 @@
+---
+title: Predictive Pareto Planning
+description: "I-2 — multi-objective optimization across the Pareto frontier"
+---
+
+# Predictive Pareto Planning
+
+A single execution plan optimizes for one objective. Pareto planning generates the full set of non-dominated trade-offs across four objectives simultaneously, letting you choose the plan that best fits your mission constraints.
+
+<Info>
+  **How it works** — CAE evaluates thousands of candidate plans with different relaxation combinations, filters dominated solutions, and returns only the Pareto-optimal frontier.
+</Info>
+
+## Objectives
+
+Every plan is scored on four axes:
+
+| Objective | Unit | Direction | Description |
+|-----------|------|-----------|-------------|
+| Latency | seconds | minimize | Total time from job start to final output delivery |
+| Energy | watt-hours | minimize | Total on-board energy consumed across all steps |
+| Reliability | probability | maximize | Delivery confidence accounting for link errors and retransmissions |
+| Quality | 0-1 score | maximize | Output fidelity — driven by quality tier selection in window steps |
+
+A plan is **Pareto-optimal** (non-dominated) if no other plan is better on every objective. The frontier is the set of all non-dominated plans.
+
+## Relaxation Types
+
+To explore the frontier, the planner applies controlled relaxations — each trades one objective for gains in others.
+
+| Relaxation | Trades Away | Gains |
+|------------|-------------|-------|
+| `extend_windows` | Latency | Reliability, Quality — more time allows higher tiers and more retransmission margin |
+| `skip_checkpoint` | Reliability | Latency, Energy — removing checkpoints saves time and power |
+| `reduce_fec` | Reliability | Latency, Energy — less FEC overhead means smaller transfers |
+| `lower_quality_tier` | Quality | Latency, Energy — lower tiers complete faster with less compute |
+
+The planner generates candidates by combining relaxations at multiple levels, then applies dominance filtering to discard any solution that is strictly worse than another.
+
+## Dominance Filtering
+
+Given two plans A and B, A **dominates** B if A is at least as good as B on all four objectives and strictly better on at least one. The Pareto frontier is the set of plans that no other plan dominates.
+
+```
+Plan A: latency=4200s  energy=18Wh  reliability=0.97  quality=0.85
+Plan B: latency=5100s  energy=22Wh  reliability=0.95  quality=0.80
+  → A dominates B (better on all four axes)
+
+Plan C: latency=3800s  energy=24Wh  reliability=0.93  quality=0.90
+  → A does not dominate C (C has better latency and quality)
+  → Both A and C are on the frontier
+```
+
+## API Usage
+
+### Single-Satellite Pareto
+
+Add `pareto: true` to a standard plan request:
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "satellite_id": "25544",
+    "preset_id": "onboard-ml-inference",
+    "pareto": true
+  }'
+```
+
+The response includes a `frontier` array instead of a single plan:
+
+```json
+{
+  "id": "pareto-a92f33e8-...",
+  "frontier": [
+    {
+      "plan_index": 0,
+      "objectives": {
+        "latency_s": 3240,
+        "energy_wh": 14.2,
+        "reliability": 0.991,
+        "quality": 0.95
+      },
+      "relaxations_applied": [],
+      "plan": { ... }
+    },
+    {
+      "plan_index": 1,
+      "objectives": {
+        "latency_s": 2880,
+        "energy_wh": 12.8,
+        "reliability": 0.967,
+        "quality": 0.85
+      },
+      "relaxations_applied": ["lower_quality_tier", "reduce_fec"],
+      "plan": { ... }
+    }
+  ],
+  "frontier_size": 5,
+  "candidates_evaluated": 128,
+  "dominated_filtered": 123
+}
+```
+
+### Fleet-Level Pareto
+
+For constellation workloads, use the fleet Pareto endpoint:
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/constellation/pareto \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "satellite_ids": ["25544", "48274", "55909"],
+    "preset_id": "split-learning",
+    "pareto": true
+  }'
+```
+
+Fleet Pareto evaluates trade-offs across all satellites in the constellation, including ISL transfer alternatives and cross-satellite placement variations.
+
+## Response Parameters
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `frontier` | array | Array of Pareto-optimal plan variants |
+| `frontier[].plan_index` | number | Index within the frontier (0 = baseline) |
+| `frontier[].objectives` | object | Objective scores for this variant |
+| `frontier[].relaxations_applied` | array | Which relaxations produced this variant |
+| `frontier[].plan` | object | Full plan object (same schema as standard plans) |
+| `frontier_size` | number | Number of non-dominated solutions |
+| `candidates_evaluated` | number | Total candidate plans generated |
+| `dominated_filtered` | number | Candidates eliminated by dominance filtering |
+
+## Console Integration
+
+In the RotaStellar Console, the **Generate Trade-offs** button on the plan detail page triggers a Pareto analysis. Results are displayed as an interactive scatter chart where:
+
+- Each axis maps to one of the four objectives
+- Each point is a Pareto-optimal plan variant
+- Clicking a point loads the full plan detail
+- Hovering shows the relaxations applied and objective scores
+
+<Note>
+  Pareto planning takes longer than single-objective planning because the planner must evaluate and filter many candidates. For complex workloads with many steps, expect 2-5x the normal planning time.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Create Plan API" icon="play" href="/api-reference/cae/create-plan">
+    API reference for POST /v1/plan
+  </Card>
+  <Card title="Constellation DAG" icon="diagram-project" href="/cae/constellation-dag">
+    Fleet-level orchestration with ISL routing
+  </Card>
+</CardGroup>

@@ -1,0 +1,199 @@
+---
+title: Orbital Compute Primitives
+description: "I-1 — 3 new step types for orbit-aware workload scheduling"
+---
+
+# Orbital Compute Primitives
+
+Standard compute steps treat satellites like ground servers. Orbital primitives don't — they decompose workloads around the physical realities of eclipse boundaries, contact windows, and ground passes.
+
+<Info>
+  **New in Orbital Resilience** — Eclipse, Window, and Pass steps extend the existing step schema. All existing presets and custom workloads continue to work unchanged.
+</Info>
+
+## Eclipse Steps
+
+Eclipse steps run during battery-only orbital night periods. They carry an explicit energy budget so the planner never over-commits the bus during eclipse.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | `"eclipse"` | Marks the step as eclipse-aware |
+| `energy_budget_wh` | number | Maximum energy the step may consume during eclipse |
+| `eclipse_policy` | string | Power management strategy: `conservative`, `balanced`, or `aggressive` |
+| `min_battery_soc` | number | Minimum battery state-of-charge to maintain (0-1) |
+| `priority` | number | Scheduling priority relative to other eclipse steps |
+
+### Eclipse Policies
+
+| Policy | Behaviour |
+|--------|-----------|
+| `conservative` | Limits compute to 40% of eclipse battery capacity. Safe for missions where power margin is thin. |
+| `balanced` | Uses up to 65% of eclipse battery. Default for most workloads. |
+| `aggressive` | Uses up to 85% of eclipse battery. Use only when the next sunlit window is guaranteed to fully recharge. |
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "satellite_id": "25544",
+    "custom_job": {
+      "name": "Eclipse Compute",
+      "steps": [
+        {
+          "id": "night_inference",
+          "name": "Battery-Only Inference",
+          "type": "eclipse",
+          "location": "onboard",
+          "energy_budget_wh": 12.5,
+          "eclipse_policy": "balanced",
+          "min_battery_soc": 0.3,
+          "compute_s": 120,
+          "output_mb": 5
+        }
+      ],
+      "policy": { "objective": "balanced", "deadline_orbits": 4 }
+    }
+  }'
+```
+
+---
+
+## Window Steps
+
+Window steps adapt their output quality based on how much time is available in the current orbital window. The planner selects a quality tier automatically — no manual tuning required.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | `"window"` | Marks the step as window-adaptive |
+| `quality_tiers` | object | Map of tier names to resource requirements |
+| `min_tier` | string | Lowest acceptable tier (default: `minimal`) |
+| `preferred_tier` | string | Tier the planner targets if time allows |
+
+### Quality Tiers
+
+Each tier defines the compute time, memory, and output size the step needs at that quality level.
+
+| Tier | Typical Use Case |
+|------|------------------|
+| `minimal` | Abbreviated result — good enough for monitoring or alerting |
+| `standard` | Normal quality. Suitable for most operational workloads |
+| `enhanced` | Higher fidelity output. Requires longer windows |
+| `maximum` | Full-resolution result. Only feasible in long sunlit windows |
+
+The planner evaluates the remaining time in the assigned orbital window and selects the highest tier that fits. If even `minimal` doesn't fit, the step is deferred to the next window.
+
+```json
+{
+  "id": "process_imagery",
+  "name": "Adaptive Image Processing",
+  "type": "window",
+  "location": "onboard",
+  "quality_tiers": {
+    "minimal":  { "compute_s": 30,  "memory_mb": 256,  "output_mb": 10 },
+    "standard": { "compute_s": 90,  "memory_mb": 512,  "output_mb": 50 },
+    "enhanced": { "compute_s": 180, "memory_mb": 1024, "output_mb": 120 },
+    "maximum":  { "compute_s": 360, "memory_mb": 2048, "output_mb": 300 }
+  },
+  "preferred_tier": "enhanced"
+}
+```
+
+<Note>
+  The selected tier is recorded in the plan response under `placement_decisions[].quality_tier` and in the event stream as `window_step.tier_selected`.
+</Note>
+
+---
+
+## Pass Steps
+
+Pass steps are atomic units of work that the planner decomposes around ground contact windows. A long-running task is broken into segments that align with pass start/end times, with configurable merge strategies for reassembling results.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | `"pass"` | Marks the step as pass-aligned |
+| `merge_strategy` | string | How segments are recombined: `concat`, `reduce`, or `latest` |
+| `max_segments` | number | Maximum number of pass-aligned segments (default: unlimited) |
+| `min_pass_duration_s` | number | Ignore passes shorter than this |
+
+### Merge Strategies
+
+| Strategy | Behaviour |
+|----------|-----------|
+| `concat` | Append all segment outputs in chronological order. Use for streaming data collection. |
+| `reduce` | Apply a reduction function across segments (e.g., averaging model gradients). |
+| `latest` | Only the last segment's output is kept. Use for iterative refinement. |
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/plan \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "satellite_id": "25544",
+    "custom_job": {
+      "name": "Multi-Pass Collection",
+      "steps": [
+        {
+          "id": "collect",
+          "name": "Pass-Aligned Data Collection",
+          "type": "pass",
+          "location": "onboard",
+          "merge_strategy": "concat",
+          "min_pass_duration_s": 120,
+          "compute_s": 60,
+          "output_mb": 200
+        }
+      ],
+      "policy": { "objective": "max_reliability", "deadline_orbits": 6 }
+    }
+  }'
+```
+
+---
+
+## Event Types
+
+Orbital primitive steps emit dedicated events in the execution event stream.
+
+| Event Type | Description |
+|-----------|-------------|
+| `eclipse_step.scheduled` | Eclipse step assigned to an eclipse window |
+| `eclipse_step.energy_check` | Energy budget validated against battery state |
+| `eclipse_step.started` | Execution begins in eclipse |
+| `eclipse_step.completed` | Eclipse step finished within energy budget |
+| `eclipse_step.deferred` | Deferred — insufficient battery for this eclipse |
+| `window_step.tier_selected` | Quality tier chosen based on available window time |
+| `window_step.started` | Window-adaptive step begins at selected tier |
+| `window_step.completed` | Window step finished |
+| `window_step.deferred` | No window large enough for even the minimal tier |
+| `pass_step.decomposed` | Step split into pass-aligned segments |
+| `pass_step.segment_started` | Individual segment begins during a pass |
+| `pass_step.segment_completed` | Segment finished |
+| `pass_step.merged` | All segments merged using the configured strategy |
+
+<Warning>
+  Eclipse steps with `aggressive` policy and low `min_battery_soc` can leave the satellite with insufficient power for the next sunlit boot sequence. Use conservative margins for early-stage missions.
+</Warning>
+
+## Combining Primitives
+
+Orbital primitives can be mixed with standard steps and with each other in the same DAG. Use `depends_on` as usual:
+
+```json
+{
+  "steps": [
+    { "id": "capture", "type": "pass", "merge_strategy": "concat", "depends_on": [] },
+    { "id": "process", "type": "window", "preferred_tier": "enhanced", "depends_on": ["capture"] },
+    { "id": "compress", "type": "eclipse", "eclipse_policy": "balanced", "depends_on": ["process"] }
+  ]
+}
+```
+
+<CardGroup cols={2}>
+  <Card title="Presets" icon="list" href="/cae/presets">
+    Built-in workloads that use orbital primitives
+  </Card>
+  <Card title="Agent Protocol" icon="satellite" href="/agent/protocol">
+    How agents handle orbital primitive events at runtime
+  </Card>
+</CardGroup>

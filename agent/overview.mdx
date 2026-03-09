@@ -73,10 +73,19 @@ The agent uses the same event format as the [CAE simulator](/cae/understanding-p
 | `security.encrypted` | Data encrypted |
 | `job.completed` | All steps finished successfully |
 | `job.failed` | Execution failed |
+| `constellation.step_assigned` | DAG step assigned to satellite |
+| `constellation.step_completed` | DAG step finished |
+| `constellation.failover` | Step failed, reassigning |
+| `isl_transfer.started` | ISL data transfer initiated |
+| `isl_transfer.completed` | ISL transfer done |
+| `checkpoint.predicted` | Hazard prediction generated |
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card title="Protocol Spec" icon="file-contract" href="/agent/protocol">
     Full protocol specification with auth, lifecycle, and error handling
+  </Card>
+  <Card title="Constellation Execution" icon="satellite-dish" href="/agent/constellation">
+    Multi-satellite DAG orchestration with ISL coordination
   </Card>
   <Card title="Rust SDK" icon="rust" href="/agent/rust-sdk">
     Build agents with the Rust crate

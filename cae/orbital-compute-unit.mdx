@@ -1,0 +1,224 @@
+---
+title: Orbital Compute Unit
+description: "I-5 — standardized orbital compute capacity measurement"
+---
+
+# Orbital Compute Unit
+
+An Orbital Compute Unit (OCU) is a standardized measure of how much useful computation a satellite can deliver per orbit, accounting for power constraints, eclipse fractions, thermal limits, and ground contact availability.
+
+<Info>
+  **Why OCUs exist** — Satellite compute capacity is not a fixed number. It varies with orbit geometry, season, battery age, and thermal state. OCUs normalize this into a single comparable metric so you can plan workloads without modeling the physics yourself.
+</Info>
+
+## Bus Profiles
+
+OCU computation starts with a bus profile — a standardized description of the satellite's compute, power, and thermal capabilities. CAE includes 6 built-in bus classes.
+
+| Bus Class | Typical Platform | Compute (GFLOPS) | Solar (W) | Battery (Wh) | Storage (GB) | Memory (MB) |
+|-----------|-----------------|-------------------|-----------|---------------|-------------|-------------|
+| `1U_cubesat` | 1U CubeSat | 2 | 2.5 | 5 | 8 | 256 |
+| `3U_cubesat` | 3U CubeSat | 10 | 7.5 | 20 | 32 | 512 |
+| `6U_cubesat` | 6U CubeSat | 50 | 25 | 60 | 64 | 1024 |
+| `12U_cubesat` | 12U CubeSat | 150 | 50 | 120 | 128 | 2048 |
+| `microsat` | Microsatellite (50-100kg) | 500 | 150 | 400 | 256 | 4096 |
+| `smallsat` | Small Satellite (100-500kg) | 2000 | 500 | 1500 | 512 | 8192 |
+
+### Auto-Detection with inferBusClass
+
+If you don't specify a bus class, CAE infers it from the satellite's NORAD ID using orbital parameters and known catalog metadata:
+
+- **Altitude and inclination** narrow the platform category
+- **Radar cross-section** (when available) estimates physical size
+- **Catalog metadata** matches against known spacecraft databases
+
+The inferred class is returned in the response so you can verify or override it.
+
+## OCU Computation
+
+The OCU model combines bus capabilities with orbital geometry to produce a per-orbit capacity estimate.
+
+### Sunlit and Eclipse Hours
+
+From the satellite's current TLE, CAE propagates the orbit and computes:
+
+| Metric | Description |
+|--------|-------------|
+| `sunlit_hours_per_orbit` | Time in sunlight — full solar power and thermal headroom available |
+| `eclipse_hours_per_orbit` | Time in Earth's shadow — battery-only, reduced thermal dissipation |
+| `daily_orbits` | Number of complete orbits per 24-hour period |
+| `daily_sunlit_hours` | Total sunlit time per day |
+| `daily_eclipse_hours` | Total eclipse time per day |
+
+### Confidence Model
+
+OCU values carry a confidence score reflecting the quality of the input data:
+
+| Factor | Impact on Confidence |
+|--------|---------------------|
+| TLE age | Degrades as TLE epoch age increases (stale elements reduce positional accuracy) |
+| Bus class source | Higher for explicit bus class, lower for inferred |
+| Eclipse fraction stability | Higher when eclipse fraction is stable across the prediction horizon |
+| Thermal margin | Higher when peak temperature is well below limits |
+
+Confidence is reported as a value between 0 and 1. Values above 0.8 are considered high-confidence.
+
+### Cost Model
+
+Each OCU carries an estimated cost based on the bus class and orbital parameters:
+
+| Component | Basis |
+|-----------|-------|
+| Compute cost | GFLOPS-hours available per orbit, weighted by bus class |
+| Power cost | Watt-hours consumed, factoring solar generation and battery cycling |
+| Storage cost | GB-hours of on-board storage occupied |
+| Transfer cost | Data volume deliverable per orbit given contact window availability |
+
+### Limiting Resource
+
+The OCU computation identifies which resource constrains capacity:
+
+```json
+"limiting_resource": {
+  "resource": "power",
+  "utilization": 0.92,
+  "headroom": 0.08,
+  "recommendation": "Reduce eclipse compute load or extend deadline to span more orbits"
+}
+```
+
+Common limiting resources: `power` (eclipse battery budget), `thermal` (heat dissipation during sunlit compute), `storage` (on-board buffer for multi-pass transfers), `contact` (ground pass availability for data delivery).
+
+## negotiateOCU Algorithm
+
+The `negotiateOCU` function runs a 4-phase algorithm to determine achievable OCU for a specific workload:
+
+| Phase | Description |
+|-------|-------------|
+| 1. Resource survey | Compute available GFLOPS-hours, watt-hours, storage, and contact time per orbit |
+| 2. Workload mapping | Map workload resource requirements to per-orbit resource availability |
+| 3. Constraint resolution | Identify the binding constraint and compute the maximum sustainable throughput |
+| 4. OCU normalization | Express the result as a standardized OCU value with confidence and cost breakdown |
+
+The negotiation accounts for workload-specific factors like checkpoint overhead, FEC requirements, and quality tier selection.
+
+## API Usage
+
+### Negotiate OCU for a Workload
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/ocu/negotiate \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "satellite_id": "25544",
+    "workload": {
+      "compute_gflops": 50,
+      "memory_mb": 512,
+      "storage_mb": 2048,
+      "output_mb": 100
+    }
+  }'
+```
+
+#### Response
+
+```json
+{
+  "satellite_id": "25544",
+  "bus_class": "smallsat",
+  "bus_class_source": "inferred",
+  "ocu": {
+    "value": 14.2,
+    "unit": "OCU/orbit",
+    "daily": 218.7,
+    "confidence": 0.87
+  },
+  "orbital_geometry": {
+    "sunlit_hours_per_orbit": 0.96,
+    "eclipse_hours_per_orbit": 0.59,
+    "daily_orbits": 15.4
+  },
+  "limiting_resource": {
+    "resource": "power",
+    "utilization": 0.92,
+    "headroom": 0.08,
+    "recommendation": "Reduce eclipse compute load or extend deadline to span more orbits"
+  },
+  "cost": {
+    "compute_cost_per_orbit": 0.42,
+    "power_cost_per_orbit": 0.18,
+    "storage_cost_per_orbit": 0.05,
+    "total_cost_per_orbit": 0.65,
+    "currency": "OCU-credits"
+  }
+}
+```
+
+### Get Bus Class Summary
+
+Retrieve the reference profile for a bus class without specifying a satellite:
+
+```bash
+curl https://rotastellar-cae.subhadip-mitra.workers.dev/v1/ocu/summary/6U_cubesat \
+  -H "Origin: https://rotastellar.com"
+```
+
+#### Response
+
+```json
+{
+  "bus_class": "6U_cubesat",
+  "profile": {
+    "compute_gflops": 50,
+    "solar_w": 25,
+    "battery_wh": 60,
+    "storage_gb": 64,
+    "memory_mb": 1024
+  },
+  "reference_ocu": {
+    "value": 3.8,
+    "unit": "OCU/orbit",
+    "assumptions": {
+      "altitude_km": 550,
+      "inclination_deg": 97.5,
+      "eclipse_fraction": 0.35
+    }
+  }
+}
+```
+
+### Negotiate and Summary Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `satellite_id` | string | Yes (negotiate) | NORAD catalog ID |
+| `workload` | object | No | Workload resource requirements for negotiation |
+| `workload.compute_gflops` | number | No | Required compute in GFLOPS |
+| `workload.memory_mb` | number | No | Required memory |
+| `workload.storage_mb` | number | No | Required on-board storage |
+| `workload.output_mb` | number | No | Output data to deliver to ground |
+| `bus_class` | string | No | Override inferred bus class |
+
+## Console Integration
+
+The Console displays an **OCU Capacity** card in the sidebar of the asset detail page:
+
+- OCU/orbit and OCU/day values with confidence indicator
+- Bus class label (with "inferred" badge when auto-detected)
+- Limiting resource bar chart showing utilization per resource
+- Sunlit/eclipse breakdown as a ring chart
+- Cost estimate per orbit
+
+<Warning>
+  OCU values are estimates based on current orbital geometry and bus profiles. Actual capacity may vary due to battery degradation, thermal anomalies, or attitude constraints not captured in the bus model.
+</Warning>
+
+<CardGroup cols={2}>
+  <Card title="Hazard Prediction" icon="triangle-exclamation" href="/cae/hazard-prediction">
+    Predictive checkpointing around orbital hazards
+  </Card>
+  <Card title="CAE Overview" icon="rocket" href="/cae/overview">
+    Constraint-Aware Execution fundamentals
+  </Card>
+</CardGroup>

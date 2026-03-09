@@ -28,6 +28,15 @@ POST a workload and a satellite ID. Get back a physically-accurate execution pla
   <Card title="Understanding Plans" icon="chart-gantt" href="/cae/understanding-plans">
     How to read plan responses
   </Card>
+  <Card title="Orbital Primitives" icon="satellite" href="/cae/orbital-primitives">
+    Eclipse, window, and pass step types
+  </Card>
+  <Card title="Pareto Planning" icon="chart-scatter" href="/cae/pareto-planning">
+    Multi-objective trade-off analysis
+  </Card>
+  <Card title="Constellation DAG" icon="diagram-project" href="/cae/constellation-dag">
+    Multi-satellite workflow orchestration
+  </Card>
 </CardGroup>
 
 ## Capabilities
@@ -42,6 +51,12 @@ POST a workload and a satellite ID. Get back a physically-accurate execution pla
 | Error correction | Reed-Solomon FEC, retransmission reserves |
 | Security | AES-128/256 encryption, SHA-256/CRC32 integrity |
 | Delivery confidence | Deterministic error budget calculation |
+| Orbital primitives | Eclipse, window, and pass step types (I-1) |
+| Pareto planning | Multi-objective frontier with 4 relaxation types (I-2) |
+| Constellation DAG | Multi-satellite orchestration with ISL routing (I-3) |
+| Hazard prediction | Eclipse-boundary checkpointing via SAA/thermal detection (I-4) |
+| Orbital Compute Unit | Standardized capacity measurement across bus classes (I-5) |
+| Monitoring | Per-endpoint latency percentiles and request metrics |
 
 ## Base URL
 
@@ -79,3 +94,9 @@ The response includes the full execution plan with orbital environment, placemen
 | `POST` | [`/v1/plan`](/api-reference/cae/create-plan) | Create an execution plan |
 | `GET` | [`/v1/plan/:id`](/api-reference/cae/get-plan) | Retrieve a plan |
 | `GET` | [`/v1/plan/:id/events`](/api-reference/cae/get-plan-events) | Get execution event stream |
+| `POST` | [`/v1/constellation/plan`](/api-reference/cae/constellation-plan) | Plan a constellation DAG |
+| `POST` | [`/v1/constellation/pareto`](/api-reference/cae/constellation-pareto) | Constellation Pareto frontier |
+| `POST` | [`/v1/hazards`](/api-reference/cae/hazards) | Predict orbital hazards |
+| `POST` | [`/v1/ocu/negotiate`](/api-reference/cae/ocu-negotiate) | Negotiate OCU capacity |
+| `GET` | [`/v1/ocu/summary/:busClass`](/api-reference/cae/ocu-summary) | OCU summary by bus class |
+| `GET` | [`/v1/metrics`](/api-reference/cae/metrics) | Service metrics and latency |

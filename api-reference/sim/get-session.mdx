@@ -1,0 +1,68 @@
+---
+title: Get Session State
+api: GET /v1/sessions/{sessionId}
+description: "Returns the full state of a simulation session including satellite positions, subsystems, and events"
+---
+
+<Note>
+  **Base URL:** `https://sim.rotastellar.com`
+  — No API key required.
+</Note>
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sessionId` | string | The session ID returned from Create Session |
+
+<RequestExample>
+```bash
+curl https://sim.rotastellar.com/v1/sessions/ses_abc123
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "session_id": "ses_abc123",
+  "epoch": "2026-03-10T12:05:00Z",
+  "tick_count": 5,
+  "satellites": [
+    {
+      "id": "sat-001",
+      "name": "RS-LEO-1",
+      "position": { "lat_deg": 32.4, "lon_deg": -118.2, "alt_km": 548.7 },
+      "velocity_km_s": 7.59,
+      "sunlit": true,
+      "subsystems": {
+        "power_w": 115,
+        "thermal_c": 22.4,
+        "comms_dbm": -82,
+        "memory_used_mb": 1024
+      },
+      "faults": []
+    },
+    {
+      "id": "sat-002",
+      "name": "RS-LEO-2",
+      "position": { "lat_deg": -14.1, "lon_deg": 45.8, "alt_km": 550.1 },
+      "velocity_km_s": 7.59,
+      "sunlit": true,
+      "subsystems": {
+        "power_w": 118,
+        "thermal_c": 21.8,
+        "comms_dbm": -79,
+        "memory_used_mb": 512
+      },
+      "faults": []
+    }
+  ],
+  "isl_links": [
+    { "from": "sat-001", "to": "sat-002", "distance_km": 1240, "latency_ms": 4.1, "active": true }
+  ],
+  "recent_events": [
+    { "epoch": "2026-03-10T12:03:00Z", "type": "eclipse_exit", "satellite": "sat-001" }
+  ]
+}
+```
+</ResponseExample>

@@ -1,0 +1,66 @@
+---
+title: Inject Fault
+api: POST /v1/sessions/{sessionId}/fault
+description: "Injects a fault into a satellite within a simulation session"
+---
+
+<Note>
+  **Base URL:** `https://sim.rotastellar.com`
+  — No API key required.
+</Note>
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sessionId` | string | The session ID returned from Create Session |
+
+### Fault Types
+
+| Type | Description |
+|------|-------------|
+| `power_loss` | Reduces available power generation |
+| `thermal_exceedance` | Raises subsystem temperature beyond nominal range |
+| `radiation_upset` | Simulates single-event upset from radiation |
+| `comms_failure` | Degrades or disables communication links |
+| `isl_degradation` | Reduces inter-satellite link bandwidth and increases latency |
+
+<RequestExample>
+```bash
+curl -X POST https://sim.rotastellar.com/v1/sessions/ses_abc123/fault \
+  -H "Content-Type: application/json" \
+  -d '{
+    "satellite_id": "sat-001",
+    "fault_type": "power_loss",
+    "severity": 0.8
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "session_id": "ses_abc123",
+  "satellite": {
+    "id": "sat-001",
+    "name": "RS-LEO-1",
+    "position": { "lat_deg": 33.8, "lon_deg": -114.5, "alt_km": 548.6 },
+    "sunlit": true,
+    "subsystems": {
+      "power_w": 23,
+      "thermal_c": 22.6,
+      "comms_dbm": -81,
+      "memory_used_mb": 1028
+    },
+    "faults": [
+      {
+        "type": "power_loss",
+        "severity": 0.8,
+        "injected_at": "2026-03-10T12:06:00Z",
+        "effect": "power_generation reduced by 80%"
+      }
+    ]
+  }
+}
+```
+</ResponseExample>

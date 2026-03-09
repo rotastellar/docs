@@ -225,6 +225,41 @@ All events follow this structure:
 | Type | Description | Payload |
 |------|-------------|---------|
 | `checkpoint.saved` | State persisted | `checkpoint_number`, `progress_fraction` |
+| `checkpoint.predicted` | Hazard prediction generated | `hazards_count`, `checkpoints_count`, `next_hazard`, `max_safe_window_s`, `overhead_fraction` |
+
+### Orbital Compute Primitive Events
+
+Eclipse, window, and pass steps emit specialized events. See [Orbital Compute Primitives](/cae/orbital-primitives) for details.
+
+| Type | Description | Payload |
+|------|-------------|---------|
+| `eclipse_step.started` | Eclipse step begins | `energy_budget_j`, `eclipse_policy`, `actual_battery_wh` |
+| `eclipse_step.completed` | Eclipse step finished | `energy_consumed_j`, `actual_battery_wh`, `actual_temperature_c` |
+| `window_step.started` | Window step begins | `planned_tier`, `quality_tiers`, `actual_battery_percent` |
+| `window_step.degraded` | Tier downgraded | `from_tier`, `to_tier`, `reason` |
+| `window_step.completed` | Window step finished | `achieved_tier`, `output_quality`, `degradations` |
+| `pass_step.started` | Pass step begins | `sequence_index`, `sequence_total`, `actual_battery_percent` |
+| `pass_step.completed` | Pass step finished | `sequence_index`, `sequence_total`, `merge_strategy` |
+
+### Constellation Events
+
+Multi-satellite DAG orchestration events. See [Constellation Execution](/agent/constellation) for details.
+
+| Type | Description | Payload |
+|------|-------------|---------|
+| `constellation.step_assigned` | Step assigned to satellite | `step_id`, `step_name`, `satellite_id`, `window_id` |
+| `constellation.step_started` | Agent began executing step | `step_id`, `actual_battery_percent` |
+| `constellation.step_completed` | Step finished | `step_id`, `duration_s`, `actual_battery_percent` |
+| `constellation.failover` | Step failed, reassigning | `step_id`, `from_satellite`, `to_satellite`, `reason` |
+| `constellation.satellite_complete` | All assigned steps done | `satellite_id`, `completed_count` |
+
+### ISL Transfer Events
+
+| Type | Description | Payload |
+|------|-------------|---------|
+| `isl_transfer.started` | ISL transfer initiated | `src_satellite`, `dst_satellite`, `data_mb`, `hops`, `route` |
+| `isl_transfer.hop_completed` | One ISL hop done | `from`, `to`, `data_mb`, `quality`, `latency_ms`, `bw_mbps` |
+| `isl_transfer.completed` | Full transfer done | `total_time_s`, `total_data_mb`, `hops`, `reliability` |
 
 ## Error Handling
 

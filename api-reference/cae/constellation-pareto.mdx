@@ -1,0 +1,66 @@
+---
+title: Constellation Pareto Frontier
+api: POST /v1/constellation/pareto
+description: "Computes the Pareto frontier across a constellation for multi-objective trade-off analysis"
+---
+
+<Note>
+  **Base URL:** `https://rotastellar-cae.subhadip-mitra.workers.dev`
+  — No API key required. CORS-validated.
+</Note>
+
+<RequestExample>
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/constellation/pareto \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "fleet": [
+      {
+        "norad_id": "99901",
+        "name": "RS-LEO-1",
+        "role": "compute",
+        "orbit": { "altitude_km": 550, "inclination_deg": 53 }
+      },
+      {
+        "norad_id": "99902",
+        "name": "RS-LEO-2",
+        "role": "compute",
+        "orbit": { "altitude_km": 550, "inclination_deg": 53 }
+      }
+    ],
+    "preset_id": "split-learning"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "frontier": [
+    {
+      "satellite": "RS-LEO-1",
+      "pareto": [
+        { "ocu": 0.25, "latency_s": 120, "reliability": 0.99 },
+        { "ocu": 0.50, "latency_s": 80, "reliability": 0.97 },
+        { "ocu": 0.75, "latency_s": 55, "reliability": 0.94 }
+      ]
+    },
+    {
+      "satellite": "RS-LEO-2",
+      "pareto": [
+        { "ocu": 0.25, "latency_s": 125, "reliability": 0.99 },
+        { "ocu": 0.50, "latency_s": 82, "reliability": 0.96 },
+        { "ocu": 0.75, "latency_s": 58, "reliability": 0.93 }
+      ]
+    }
+  ],
+  "constellation_metrics": {
+    "total_ocu": 1.50,
+    "min_latency_s": 55,
+    "avg_reliability": 0.963,
+    "isl_overhead_s": 14
+  }
+}
+```
+</ResponseExample>

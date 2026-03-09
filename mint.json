@@ -87,7 +87,12 @@
         "cae/overview",
         "cae/presets",
         "cae/custom-workloads",
-        "cae/understanding-plans"
+        "cae/understanding-plans",
+        "cae/orbital-primitives",
+        "cae/pareto-planning",
+        "cae/constellation-dag",
+        "cae/hazard-prediction",
+        "cae/orbital-compute-unit"
       ]
     },
     {
@@ -95,6 +100,7 @@
       "pages": [
         "agent/overview",
         "agent/protocol",
+        "agent/constellation",
         "agent/rust-sdk",
         "agent/quickstart"
       ]
@@ -119,7 +125,8 @@
     {
       "group": "Orbital Sim",
       "pages": [
-        "sim/overview"
+        "sim/overview",
+        "sim/sessions"
       ]
     },
     {
@@ -153,7 +160,13 @@
         "api-reference/cae/list-presets",
         "api-reference/cae/create-plan",
         "api-reference/cae/get-plan",
-        "api-reference/cae/get-plan-events"
+        "api-reference/cae/get-plan-events",
+        "api-reference/cae/constellation-plan",
+        "api-reference/cae/constellation-pareto",
+        "api-reference/cae/hazards",
+        "api-reference/cae/ocu-negotiate",
+        "api-reference/cae/ocu-summary",
+        "api-reference/cae/metrics"
       ]
     },
     {
@@ -173,7 +186,11 @@
         "api-reference/sim/batch-state",
         "api-reference/sim/propagate",
         "api-reference/sim/passes",
-        "api-reference/sim/templates"
+        "api-reference/sim/templates",
+        "api-reference/sim/create-session",
+        "api-reference/sim/get-session",
+        "api-reference/sim/tick-session",
+        "api-reference/sim/inject-fault"
       ]
     },
     {

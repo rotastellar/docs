@@ -1,0 +1,46 @@
+---
+title: Negotiate OCU
+api: POST /v1/ocu/negotiate
+description: "Negotiates an Orbital Compute Unit allocation for a satellite workload"
+---
+
+<Note>
+  **Base URL:** `https://rotastellar-cae.subhadip-mitra.workers.dev`
+  — No API key required. CORS-validated.
+</Note>
+
+<RequestExample>
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/ocu/negotiate \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "satellite_id": "25544",
+    "workload_power_w": 50
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "satellite_id": "25544",
+  "ocu_negotiation": {
+    "ocu_allocated": 0.62,
+    "sunlit_hours": 10.4,
+    "eclipse_hours": 5.6,
+    "daily_compute_hours": 8.2,
+    "confidence": 0.94,
+    "cost_usd_per_hour": 0.035,
+    "limiting_resource": "power"
+  },
+  "power_budget": {
+    "generation_w": 120,
+    "bus_overhead_w": 45,
+    "available_w": 75,
+    "requested_w": 50,
+    "margin_w": 25
+  }
+}
+```
+</ResponseExample>

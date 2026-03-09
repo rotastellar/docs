@@ -1,0 +1,305 @@
+---
+title: Simulation Sessions
+description: "Stateful satellite constellation simulation with subsystem tracking and fault injection"
+---
+
+# Simulation Sessions
+
+**Version:** 1.1.0
+
+Simulation Sessions extend the Orbital Sim with **stateful, multi-satellite simulation**. Unlike the stateless propagation endpoints, sessions persist constellation state in KV and let you advance time step-by-step, track subsystem health, model inter-satellite link quality, and inject faults.
+
+<Info>
+  Sessions are designed for integration testing of constellation workloads. They power the agent executor's simulated satellite mode and the CAE constellation planner's test harness.
+</Info>
+
+## Base URL
+
+```
+https://sim.rotastellar.com
+```
+
+## Concepts
+
+### Session Lifecycle
+
+A session represents a constellation of up to 50 satellites. On creation, each satellite is initialized with orbital elements and default subsystem state. You advance the simulation by calling the **tick** endpoint, which propagates orbits, updates subsystems, checks for natural faults, and recalculates ISL links.
+
+Sessions are stored in the `SIM_STATE` KV binding with a **1-hour TTL**. If a session is not ticked within one hour, it is automatically evicted.
+
+### Subsystem State
+
+Every satellite in a session tracks five subsystems:
+
+| Subsystem | Unit | Initial Value | Model |
+|-----------|------|---------------|-------|
+| `battery` | % | 100 | Charge in sunlight, discharge in eclipse. Rate depends on compute load. |
+| `solar_power` | W | 100 (sunlit) / 0 (eclipse) | Binary based on eclipse state. |
+| `temperature` | C | 20 | Rises under compute load, radiative cooling in eclipse. |
+| `memory` | MB | 0 (of 512) | Accumulates with data generation, freed on downlink. |
+| `cpu` | % | 0 | Set by active workload. Idle satellites report 0%. |
+
+### ISL Link Quality
+
+Inter-satellite links (ISLs) are modeled between all satellite pairs within range:
+
+| Parameter | Value |
+|-----------|-------|
+| Max range | 5,000 km |
+| Distance factor | `1 - (distance / 5000) * 0.6` |
+| Eclipse penalty | `0.9` (applied when either endpoint is in eclipse) |
+| Effective bandwidth | `100 Mbps * quality` |
+
+A link quality of 0 means the satellites are out of range. Quality degrades linearly with distance and is further penalized during eclipse due to thermal effects on transponders.
+
+### Natural Fault Detection
+
+Each tick evaluates three natural fault conditions:
+
+| Fault | Condition | Probability |
+|-------|-----------|-------------|
+| SAA radiation upset | Satellite passes through the South Atlantic Anomaly region | 2% per tick in region |
+| Thermal exceedance | Temperature exceeds 50C | Deterministic |
+| Power critical | Battery drops below 5% | Deterministic |
+
+When a natural fault triggers, it is included in the tick response as a `faults` array entry.
+
+## Endpoints
+
+### Create Session
+
+```
+POST /v1/sessions
+```
+
+Creates a new simulation session with the specified satellites.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `satellites` | array | yes | Array of satellite definitions (max 50) |
+| `satellites[].id` | string | yes | Unique satellite identifier within the session |
+| `satellites[].elements` | object | yes | Orbital elements (same schema as `/v1/state`) |
+
+```bash
+curl -X POST https://sim.rotastellar.com/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "satellites": [
+      {
+        "id": "sat-1",
+        "elements": {
+          "altitude_km": 550,
+          "inclination_deg": 53,
+          "raan_deg": 0,
+          "mean_anomaly_deg": 0
+        }
+      },
+      {
+        "id": "sat-2",
+        "elements": {
+          "altitude_km": 550,
+          "inclination_deg": 53,
+          "raan_deg": 0,
+          "mean_anomaly_deg": 120
+        }
+      },
+      {
+        "id": "sat-3",
+        "elements": {
+          "altitude_km": 550,
+          "inclination_deg": 53,
+          "raan_deg": 0,
+          "mean_anomaly_deg": 240
+        }
+      }
+    ]
+  }'
+```
+
+**Response (201):**
+
+```json
+{
+  "session_id": "ses-a1b2c3d4",
+  "satellite_count": 3,
+  "created_at": "2026-03-10T12:00:00Z",
+  "ttl_seconds": 3600
+}
+```
+
+<Warning>
+  Sessions are limited to 50 satellites. Requests exceeding this limit return a 400 error.
+</Warning>
+
+### Get Session State
+
+```
+GET /v1/sessions/:id
+```
+
+Returns the full constellation state including all satellite positions, subsystems, and active ISL links.
+
+**Response (200):**
+
+```json
+{
+  "session_id": "ses-a1b2c3d4",
+  "tick": 5,
+  "sim_time": "2026-03-10T12:25:00Z",
+  "satellites": [
+    {
+      "id": "sat-1",
+      "position": {
+        "lat": 42.15,
+        "lon": -73.82,
+        "altitude_km": 550.3
+      },
+      "in_eclipse": false,
+      "subsystems": {
+        "battery": 94.2,
+        "solar_power": 100,
+        "temperature": 22.5,
+        "memory": 45.0,
+        "cpu": 30
+      }
+    }
+  ],
+  "isl_links": [
+    {
+      "from": "sat-1",
+      "to": "sat-2",
+      "distance_km": 1823.4,
+      "quality": 0.78,
+      "bandwidth_mbps": 78.0,
+      "eclipse_penalty_applied": false
+    }
+  ]
+}
+```
+
+### Tick (Advance Simulation)
+
+```
+POST /v1/sessions/:id/tick
+```
+
+Advances the simulation by one time step. Each tick performs the following in order:
+
+1. Propagate all satellite orbits forward
+2. Detect eclipse transitions (sunlit/shadow)
+3. Update subsystem state (battery, thermal, solar)
+4. Check natural fault conditions
+5. Recalculate all ISL links
+
+**Request body:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `duration_s` | number | no | 300 | Time step duration in seconds |
+
+```bash
+curl -X POST https://sim.rotastellar.com/v1/sessions/ses-a1b2c3d4/tick \
+  -H "Content-Type: application/json" \
+  -d '{
+    "duration_s": 300
+  }'
+```
+
+**Response (200):**
+
+```json
+{
+  "session_id": "ses-a1b2c3d4",
+  "tick": 6,
+  "sim_time": "2026-03-10T12:30:00Z",
+  "duration_s": 300,
+  "satellites": [ ... ],
+  "isl_links": [ ... ],
+  "eclipse_transitions": [
+    {
+      "satellite_id": "sat-2",
+      "transition": "entered_eclipse",
+      "sim_time": "2026-03-10T12:27:14Z"
+    }
+  ],
+  "faults": []
+}
+```
+
+<Note>
+  The `eclipse_transitions` array only contains satellites whose eclipse state changed during this tick. An empty array means no transitions occurred.
+</Note>
+
+### Inject Fault
+
+```
+POST /v1/sessions/:id/fault
+```
+
+Injects a fault into a specific satellite. The fault takes effect immediately and is reflected in the session state.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `satellite_id` | string | yes | Target satellite |
+| `fault_type` | string | yes | One of the fault types below |
+
+**Fault types and effects:**
+
+| Fault Type | Immediate Effect |
+|------------|-----------------|
+| `power_loss` | Battery set to 0%, solar power disabled |
+| `thermal_exceedance` | Temperature set to 85C |
+| `radiation_upset` | CPU reset to 0%, memory corrupted (set to 0) |
+| `comms_failure` | All ISL links to/from this satellite removed |
+| `isl_degradation` | All ISL links to/from this satellite quality halved |
+
+```bash
+curl -X POST https://sim.rotastellar.com/v1/sessions/ses-a1b2c3d4/fault \
+  -H "Content-Type: application/json" \
+  -d '{
+    "satellite_id": "sat-2",
+    "fault_type": "power_loss"
+  }'
+```
+
+**Response (200):**
+
+```json
+{
+  "session_id": "ses-a1b2c3d4",
+  "satellite_id": "sat-2",
+  "fault_type": "power_loss",
+  "applied_at_tick": 6,
+  "effects": {
+    "battery": 0,
+    "solar_power": 0
+  }
+}
+```
+
+<Warning>
+  Fault injection is irreversible within a session. To restore a satellite, create a new session.
+</Warning>
+
+## Storage
+
+Sessions are stored in the `SIM_STATE` KV binding. Each session is a single JSON document keyed by `session:{session_id}`. The 1-hour TTL ensures stale sessions are automatically cleaned up.
+
+| KV Binding | Key Pattern | TTL |
+|------------|-------------|-----|
+| `SIM_STATE` | `session:{session_id}` | 3600s (1 hour) |
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Orbital Sim Overview" icon="satellite" href="/sim/overview">
+    Stateless propagation, eclipse detection, and pass prediction
+  </Card>
+  <Card title="Sim API Reference" icon="code" href="/api-reference/sim/service-index">
+    Full API reference for all Sim endpoints
+  </Card>
+</CardGroup>

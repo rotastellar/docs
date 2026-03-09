@@ -7,6 +7,54 @@ description: "API version history and updates"
 
 All notable changes to the RotaStellar API.
 
+## 2026-03-10 — Orbital Resilience Portfolio
+
+### New: 5 Orbital Resilience Inventions
+
+- **I-1: Orbital Compute Primitives** — 3 new step types (eclipse, window, pass) for orbit-aware workload scheduling with energy budgets, adaptive quality tiers, and ground contact decomposition
+- **I-2: Predictive Pareto Planning** — Multi-objective optimization across 4 objectives (latency, energy, reliability, quality) with dominance filtering and 4 relaxation types
+- **I-3: Constellation DAG** — Multi-satellite workflow orchestration with time-expanded Dijkstra ISL routing, 5-phase placement algorithm, and k-d tree spatial indexing
+- **I-4: Eclipse-Boundary Preservation** — Hazard-predictive checkpointing using Keplerian+J2 propagation, SAA detection, and thermal prediction with automatic checkpoint scheduling
+- **I-5: Orbital Compute Unit** — Standardized capacity measurement across 6 satellite bus classes (1U CubeSat through SmallSat) with confidence and cost models
+
+### New: Simulation Sessions (Sim v1.1.0)
+
+- **Stateful sessions** — Create multi-satellite simulation sessions with KV-backed state persistence
+- **Subsystem tracking** — Battery charge/discharge, solar power, temperature, memory, CPU per satellite
+- **ISL link quality** — Distance-based quality model with eclipse penalty and effective bandwidth
+- **Fault injection** — 5 fault types (power_loss, thermal_exceedance, radiation_upset, comms_failure, isl_degradation) with natural detection (SAA, thermal, critical battery)
+
+### New: Agent Constellation Mode
+
+- **ConstellationState** — DAG step tracking with assignment, execution, completion, and failover state machine
+- **ISL transfer lifecycle** — Hop-by-hop quality metrics, bandwidth, and latency reporting
+- **Automatic failover** — Battery <10%, temperature >75°C, or compute unavailable triggers step reassignment
+- **Event enrichment** — All constellation events include actual satellite state (battery, temperature, position, eclipse)
+
+### New: Monitoring & Operations
+
+- **CAE metrics endpoint** — Per-endpoint latency percentiles (p50/p95/p99), request counts, status distribution
+- **Consolidated API directory** — 39 public endpoints documented across Intelligence, CAE, Sim, and Agent Protocol services
+- **Pareto + Constellation UI** — Interactive scatter chart for fleet-level trade-off analysis
+- **Monitoring dashboard** — Admin dashboard with real-time CAE metrics visualization
+
+### New API Endpoints
+
+| Service | Endpoint | Description |
+|---------|----------|-------------|
+| CAE | `POST /v1/constellation/plan` | Plan constellation DAG |
+| CAE | `POST /v1/constellation/pareto` | Constellation Pareto frontier |
+| CAE | `POST /v1/hazards` | Predict orbital hazards |
+| CAE | `POST /v1/ocu/negotiate` | Negotiate OCU capacity |
+| CAE | `GET /v1/ocu/summary/:busClass` | OCU summary by bus class |
+| CAE | `GET /v1/metrics` | Service metrics |
+| Sim | `POST /v1/sessions` | Create simulation session |
+| Sim | `GET /v1/sessions/:id` | Get session state |
+| Sim | `POST /v1/sessions/:id/tick` | Advance simulation |
+| Sim | `POST /v1/sessions/:id/fault` | Inject fault |
+
+---
+
 ## 2026-03-05 — CAE v1.0
 
 ### New: Constraint-Aware Execution

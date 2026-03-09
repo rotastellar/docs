@@ -1,0 +1,49 @@
+---
+title: OCU Summary
+api: GET /v1/ocu/summary/{busClass}
+description: "Returns the OCU capacity profile for a given satellite bus class"
+---
+
+<Note>
+  **Base URL:** `https://rotastellar-cae.subhadip-mitra.workers.dev`
+  — No API key required. CORS-validated.
+</Note>
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `busClass` | string | Satellite bus class. One of: `1U`, `2U`, `3U`, `6U`, `12U`, `SmallSat` |
+
+<RequestExample>
+```bash
+curl https://rotastellar-cae.subhadip-mitra.workers.dev/v1/ocu/summary/6U \
+  -H "Origin: https://rotastellar.com"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "bus_class": "6U",
+  "profile": {
+    "power_generation_w": 80,
+    "bus_overhead_w": 30,
+    "compute_available_w": 50,
+    "memory_mb": 4096,
+    "storage_gb": 32
+  },
+  "capacity_bands": [
+    { "ocu": 0.25, "power_w": 12.5, "description": "Light sensing / telemetry" },
+    { "ocu": 0.50, "power_w": 25.0, "description": "Edge inference" },
+    { "ocu": 0.75, "power_w": 37.5, "description": "Split learning / compression" },
+    { "ocu": 1.00, "power_w": 50.0, "description": "Full compute allocation" }
+  ],
+  "ocu_reference": {
+    "sunlit_ocu_max": 1.0,
+    "eclipse_ocu_max": 0.4,
+    "daily_average_ocu": 0.72
+  }
+}
+```
+</ResponseExample>

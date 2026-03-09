@@ -1,0 +1,59 @@
+---
+title: Tick Session
+api: POST /v1/sessions/{sessionId}/tick
+description: "Advances the simulation by a given duration and returns the updated state"
+---
+
+<Note>
+  **Base URL:** `https://sim.rotastellar.com`
+  — No API key required.
+</Note>
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sessionId` | string | The session ID returned from Create Session |
+
+<RequestExample>
+```bash
+curl -X POST https://sim.rotastellar.com/v1/sessions/ses_abc123/tick \
+  -H "Content-Type: application/json" \
+  -d '{
+    "duration_s": 60
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "session_id": "ses_abc123",
+  "epoch": "2026-03-10T12:06:00Z",
+  "tick_count": 6,
+  "duration_s": 60,
+  "satellites": [
+    {
+      "id": "sat-001",
+      "name": "RS-LEO-1",
+      "position": { "lat_deg": 33.8, "lon_deg": -114.5, "alt_km": 548.6 },
+      "velocity_km_s": 7.59,
+      "sunlit": true,
+      "subsystems": {
+        "power_w": 116,
+        "thermal_c": 22.6,
+        "comms_dbm": -81,
+        "memory_used_mb": 1028
+      },
+      "faults": []
+    }
+  ],
+  "isl_links": [
+    { "from": "sat-001", "to": "sat-002", "distance_km": 1235, "latency_ms": 4.1, "active": true }
+  ],
+  "events": [
+    { "epoch": "2026-03-10T12:05:30Z", "type": "isl_handover", "from": "sat-002", "to": "sat-003" }
+  ]
+}
+```
+</ResponseExample>

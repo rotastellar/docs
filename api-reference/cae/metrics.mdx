@@ -1,0 +1,53 @@
+---
+title: Service Metrics
+api: GET /v1/metrics
+description: "Returns per-endpoint latency percentiles, request counts, and status distribution"
+---
+
+<Note>
+  **Base URL:** `https://rotastellar-cae.subhadip-mitra.workers.dev`
+  — No API key required. CORS-validated.
+</Note>
+
+<RequestExample>
+```bash
+curl https://rotastellar-cae.subhadip-mitra.workers.dev/v1/metrics \
+  -H "Origin: https://rotastellar.com"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "endpoints": {
+    "POST /v1/constellation/plan": {
+      "requests": 1284,
+      "latency_ms": { "p50": 42, "p95": 110, "p99": 245 },
+      "status": { "200": 1260, "400": 18, "500": 6 }
+    },
+    "POST /v1/constellation/pareto": {
+      "requests": 873,
+      "latency_ms": { "p50": 55, "p95": 140, "p99": 310 },
+      "status": { "200": 861, "400": 10, "500": 2 }
+    },
+    "POST /v1/hazards": {
+      "requests": 2041,
+      "latency_ms": { "p50": 28, "p95": 72, "p99": 160 },
+      "status": { "200": 2018, "400": 20, "500": 3 }
+    },
+    "POST /v1/ocu/negotiate": {
+      "requests": 3512,
+      "latency_ms": { "p50": 18, "p95": 45, "p99": 98 },
+      "status": { "200": 3480, "400": 28, "500": 4 }
+    },
+    "GET /v1/ocu/summary/:busClass": {
+      "requests": 1890,
+      "latency_ms": { "p50": 8, "p95": 22, "p99": 50 },
+      "status": { "200": 1878, "400": 12 }
+    }
+  },
+  "uptime_s": 604800,
+  "collected_at": "2026-03-10T12:00:00Z"
+}
+```
+</ResponseExample>

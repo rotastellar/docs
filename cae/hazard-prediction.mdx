@@ -1,0 +1,199 @@
+---
+title: Hazard Prediction
+description: "I-4 — eclipse-boundary preservation via predictive checkpointing"
+---
+
+# Hazard Prediction
+
+The HazardPredictor identifies upcoming orbital hazards — eclipse transitions, South Atlantic Anomaly (SAA) traversals, and thermal excursions — and schedules checkpoints so that in-progress computation can survive them without data loss.
+
+<Info>
+  **Why this matters** — An eclipse boundary can cut available power by 95% in seconds. Without predictive checkpointing, any in-flight step that spans an eclipse transition risks silent data corruption or abrupt termination.
+</Info>
+
+## The 9-Phase Algorithm
+
+The HazardPredictor runs a 9-phase pipeline over the planning horizon:
+
+| Phase | Name | Description |
+|-------|------|-------------|
+| 1 | Orbit propagation | Keplerian + J2 perturbation model propagates the satellite state at 10-second intervals |
+| 2 | Eclipse detection | Cylindrical shadow model identifies sunlit/eclipse transitions |
+| 3 | Eclipse boundary refinement | Binary search narrows each transition to sub-second precision |
+| 4 | SAA detection | Point-in-polygon test against the SAA boundary polygon for each propagation point |
+| 5 | SAA window construction | Clusters SAA detections into contiguous traversal windows |
+| 6 | Thermal prediction | Projects component temperatures using power dissipation and orbital thermal environment |
+| 7 | Thermal excursion detection | Flags windows where predicted temperature exceeds component limits |
+| 8 | Checkpoint scheduling | Places checkpoints before each hazard with sufficient margin for state serialization |
+| 9 | Checkpoint merge | Consolidates checkpoints that fall within a configurable merge window to reduce overhead |
+
+## Hazard Types
+
+### Eclipse Boundaries
+
+Detected using the cylindrical shadow model — the same model used in the CAE orbital environment builder. The predictor identifies both eclipse entry (sunlit-to-shadow) and eclipse exit (shadow-to-sunlit) transitions.
+
+| Parameter | Value |
+|-----------|-------|
+| Detection model | Cylindrical Earth shadow |
+| Propagation | Keplerian + J2 secular perturbations |
+| Time resolution | Sub-second (binary search refinement) |
+| Margin | Configurable, default 30 seconds before transition |
+
+### South Atlantic Anomaly
+
+The SAA is a region of elevated radiation over the South Atlantic where the inner Van Allen belt dips closest to Earth. Sensitive electronics (GPUs, FPGAs) experience elevated single-event upset rates during SAA traversals.
+
+| Parameter | Value |
+|-----------|-------|
+| Detection method | Point-in-polygon against SAA boundary contour |
+| Boundary model | AP-8/AE-8 derived, updated annually |
+| Altitude scaling | Contour expands at lower altitudes |
+| Typical duration | 10-20 minutes per traversal for LEO |
+
+### Thermal Excursions
+
+The thermal predictor models component temperature based on solar flux, Earth albedo, bus power dissipation, and radiator capacity. Excursions are flagged when any component is predicted to exceed its operational limit.
+
+| Parameter | Value |
+|-----------|-------|
+| Thermal model | Single-node lumped parameter per component |
+| Heat sources | Solar flux, Earth IR, internal dissipation |
+| Heat sinks | Radiator panels, thermal mass |
+| Warning threshold | 5 degrees C below operational limit |
+
+## Checkpoint Scheduling
+
+For each detected hazard, the predictor inserts a checkpoint at `hazard_start - margin - serialization_time`. If two hazards are close together (within the merge window), their checkpoints are consolidated into one.
+
+```
+Timeline:
+  |---step running---|--ckpt--|--margin--|==ECLIPSE==|---step resumes---|
+                     ^                    ^
+                checkpoint            hazard start
+```
+
+The checkpoint includes full step state: intermediate buffers, model weights, progress counters, and RNG state. The agent serializes this to on-board storage before the hazard arrives.
+
+## API Usage
+
+```bash
+curl -X POST https://rotastellar-cae.subhadip-mitra.workers.dev/v1/hazards \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://rotastellar.com" \
+  -d '{
+    "satellite_id": "25544",
+    "prediction_hours": 24,
+    "hazard_types": ["eclipse", "saa", "thermal"],
+    "checkpoint_margin_s": 30,
+    "merge_window_s": 60
+  }'
+```
+
+### Request Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `satellite_id` | string | Yes | — | NORAD catalog ID |
+| `prediction_hours` | number | No | 12 | Prediction horizon |
+| `hazard_types` | string[] | No | all | Filter to specific hazard types |
+| `checkpoint_margin_s` | number | No | 30 | Seconds of margin before each hazard |
+| `merge_window_s` | number | No | 60 | Merge checkpoints closer than this |
+
+### Response Structure
+
+```json
+{
+  "satellite_id": "25544",
+  "prediction_start": "2026-03-10T12:00:00Z",
+  "prediction_hours": 24,
+  "hazards": [
+    {
+      "type": "eclipse_entry",
+      "start": "2026-03-10T12:34:12.847Z",
+      "end": "2026-03-10T13:07:45.231Z",
+      "duration_s": 2012,
+      "severity": "high",
+      "details": {
+        "battery_soc_at_entry": 0.82,
+        "predicted_soc_at_exit": 0.41
+      }
+    },
+    {
+      "type": "saa",
+      "start": "2026-03-10T14:18:30.000Z",
+      "end": "2026-03-10T14:32:15.000Z",
+      "duration_s": 825,
+      "severity": "medium",
+      "details": {
+        "peak_flux_ratio": 3.2,
+        "upset_probability": 0.0012
+      }
+    },
+    {
+      "type": "thermal_excursion",
+      "start": "2026-03-10T16:45:00.000Z",
+      "end": "2026-03-10T17:02:00.000Z",
+      "duration_s": 1020,
+      "severity": "low",
+      "details": {
+        "component": "gpu",
+        "predicted_temp_c": 78.5,
+        "limit_c": 85
+      }
+    }
+  ],
+  "checkpoint_schedule": [
+    {
+      "time": "2026-03-10T12:33:22.847Z",
+      "reason": "eclipse_entry",
+      "hazard_index": 0,
+      "serialization_budget_s": 20
+    },
+    {
+      "time": "2026-03-10T14:17:40.000Z",
+      "reason": "saa",
+      "hazard_index": 1,
+      "serialization_budget_s": 20
+    }
+  ],
+  "max_safe_window_s": 6137,
+  "overhead_fraction": 0.018
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `hazards` | array | All detected hazards in chronological order |
+| `hazards[].severity` | string | `low`, `medium`, or `high` based on impact to computation |
+| `checkpoint_schedule` | array | Recommended checkpoint times with reasons |
+| `max_safe_window_s` | number | Longest uninterrupted compute window in the prediction horizon |
+| `overhead_fraction` | number | Fraction of total time consumed by checkpoint serialization |
+
+<Note>
+  The `overhead_fraction` helps you decide whether predictive checkpointing is worth the cost. Values below 0.05 (5%) are typical for LEO orbits with 90-minute periods.
+</Note>
+
+## Console Integration
+
+The Console surfaces hazard predictions on the **Hazards tab** of the asset detail page:
+
+- Timeline visualization shows hazards as colored bands (red for eclipse, orange for SAA, yellow for thermal)
+- Checkpoint markers appear on the timeline with serialization budget indicators
+- The max safe window is highlighted
+- Clicking a hazard expands its detail panel with severity, duration, and predicted impact
+
+## Agent Integration
+
+When the agent receives a plan with predictive checkpoints, it listens for the `checkpoint.predicted` event and serializes state to on-board storage at the scheduled time. See the [Agent Protocol](/agent/protocol) documentation for event handling details.
+
+<CardGroup cols={2}>
+  <Card title="Orbital Primitives" icon="atom" href="/cae/orbital-primitives">
+    Eclipse and window-aware step types
+  </Card>
+  <Card title="Understanding Plans" icon="chart-gantt" href="/cae/understanding-plans">
+    How to read plan responses including hazard data
+  </Card>
+</CardGroup>

@@ -38,6 +38,10 @@ tags:
     description: Feasibility analysis, thermal modeling, latency simulation
   - name: Intelligence
     description: Satellite tracking, conjunction analysis, pattern detection
+  - name: CAE
+    description: Constraint-Aware Execution — orbital compute planning, constellation DAG, Pareto optimization
+  - name: Sim
+    description: Orbital simulation — stateless computation and stateful constellation sessions
   - name: Runtime
     description: Orbit-aware scheduling, adaptive inference, resilient compute (Coming Q2 2026)
 
@@ -1107,3 +1111,513 @@ paths:
                       end:
                         type: string
                         format: date-time
+
+  # --- CAE Endpoints ---
+
+  /constellation/plan:
+    post:
+      summary: Plan constellation DAG
+      description: Orchestrate a multi-satellite workload across a fleet with ISL routing and step assignment
+      operationId: planConstellationDag
+      tags: [CAE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fleet, preset_id]
+              properties:
+                fleet:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      norad_id:
+                        type: string
+                      name:
+                        type: string
+                      role:
+                        type: string
+                        enum: [compute, relay, storage]
+                      orbit:
+                        type: object
+                        properties:
+                          altitude_km:
+                            type: number
+                          inclination_deg:
+                            type: number
+                          eccentricity:
+                            type: number
+                          raan_deg:
+                            type: number
+                preset_id:
+                  type: string
+      responses:
+        '200':
+          description: Constellation plan with step assignments and ISL routing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metrics:
+                    type: object
+                    properties:
+                      critical_path_s:
+                        type: number
+                      satellites_used:
+                        type: integer
+                      isl_transfers:
+                        type: integer
+                      reliability:
+                        type: number
+                  assignments:
+                    type: array
+                    items:
+                      type: object
+                  isl_routes:
+                    type: array
+                    items:
+                      type: object
+
+  /constellation/pareto:
+    post:
+      summary: Constellation Pareto frontier
+      description: Generate fleet-level Pareto frontier via per-satellite analysis and constellation placement
+      operationId: constellationPareto
+      tags: [CAE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fleet, preset_id]
+              properties:
+                fleet:
+                  type: array
+                  items:
+                    type: object
+                preset_id:
+                  type: string
+      responses:
+        '200':
+          description: Pareto frontier with trade-off candidates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  frontier:
+                    type: array
+                    items:
+                      type: object
+                  dominated_count:
+                    type: integer
+
+  /hazards:
+    post:
+      summary: Predict orbital hazards
+      description: Predict eclipse boundaries, SAA passages, and thermal exceedances for checkpoint scheduling
+      operationId: predictHazards
+      tags: [CAE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [satellite_id]
+              properties:
+                satellite_id:
+                  type: string
+                prediction_hours:
+                  type: number
+                  default: 24
+      responses:
+        '200':
+          description: Hazard prediction with checkpoint schedule
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hazards:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum: [eclipse_entry, eclipse_exit, saa_entry, saa_exit, thermal_exceedance]
+                        time:
+                          type: string
+                          format: date-time
+                        severity:
+                          type: string
+                  checkpoint_schedule:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        time:
+                          type: string
+                          format: date-time
+                        reason:
+                          type: string
+                  summary:
+                    type: object
+                    properties:
+                      hazards_count:
+                        type: integer
+                      checkpoints_count:
+                        type: integer
+                      max_safe_window_s:
+                        type: number
+                      overhead_fraction:
+                        type: number
+
+  /ocu/negotiate:
+    post:
+      summary: Negotiate OCU capacity
+      description: Compute orbital compute units available for a satellite and workload
+      operationId: negotiateOcu
+      tags: [CAE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [satellite_id]
+              properties:
+                satellite_id:
+                  type: string
+                workload_power_w:
+                  type: number
+                  default: 50
+      responses:
+        '200':
+          description: OCU negotiation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bus_class:
+                    type: string
+                  sunlit_ocu:
+                    type: number
+                  eclipse_ocu:
+                    type: number
+                  daily_ocu:
+                    type: number
+                  confidence:
+                    type: number
+                  cost_per_ocu:
+                    type: number
+                  limiting_resource:
+                    type: string
+
+  /ocu/summary/{busClass}:
+    get:
+      summary: OCU summary by bus class
+      description: Get reference OCU values and capacity bands for a satellite bus class
+      operationId: getOcuSummary
+      tags: [CAE]
+      parameters:
+        - name: busClass
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [1U, 2U, 3U, 6U, 12U, SmallSat]
+      responses:
+        '200':
+          description: Bus profile with OCU capacity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bus_class:
+                    type: string
+                  profile:
+                    type: object
+                    properties:
+                      power_w:
+                        type: number
+                      battery_wh:
+                        type: number
+                      compute_gflops:
+                        type: number
+                      memory_gb:
+                        type: number
+                      mass_kg:
+                        type: number
+                  ocu_reference:
+                    type: object
+                    properties:
+                      sunlit:
+                        type: number
+                      eclipse:
+                        type: number
+                      daily:
+                        type: number
+
+  /metrics:
+    get:
+      summary: Service metrics
+      description: Get per-endpoint latency percentiles and request counts
+      operationId: getMetrics
+      tags: [CAE]
+      responses:
+        '200':
+          description: Service metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_requests:
+                    type: integer
+                  uptime_s:
+                    type: number
+                  endpoints:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        count:
+                          type: integer
+                        avg_ms:
+                          type: number
+                        p50_ms:
+                          type: number
+                        p95_ms:
+                          type: number
+                        p99_ms:
+                          type: number
+                        max_ms:
+                          type: number
+
+  # --- Sim Session Endpoints ---
+
+  /sessions:
+    post:
+      summary: Create simulation session
+      description: Create a stateful multi-satellite simulation session with subsystem tracking
+      operationId: createSession
+      tags: [Sim]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [satellites]
+              properties:
+                satellites:
+                  type: array
+                  maxItems: 50
+                  items:
+                    type: object
+                    required: [id, elements]
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      elements:
+                        type: object
+                        properties:
+                          altitude_km:
+                            type: number
+                          inclination_deg:
+                            type: number
+                          eccentricity:
+                            type: number
+                          raan_deg:
+                            type: number
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                  satellites:
+                    type: integer
+                  created_at:
+                    type: string
+                    format: date-time
+
+  /sessions/{sessionId}:
+    get:
+      summary: Get session state
+      description: Retrieve full session state including satellite positions, subsystems, ISL links, and faults
+      operationId: getSessionState
+      tags: [Sim]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                  sim_time:
+                    type: string
+                    format: date-time
+                  satellites:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        position:
+                          $ref: '#/components/schemas/Position'
+                        subsystems:
+                          type: object
+                          properties:
+                            battery_percent:
+                              type: number
+                            solar_power_w:
+                              type: number
+                            temperature_c:
+                              type: number
+                            memory_used_mb:
+                              type: number
+                            cpu_percent:
+                              type: number
+                        in_eclipse:
+                          type: boolean
+                  isl_links:
+                    type: array
+                    items:
+                      type: object
+                  faults:
+                    type: array
+                    items:
+                      type: object
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/tick:
+    post:
+      summary: Tick simulation
+      description: Advance simulation time, propagate satellites, update subsystems, detect faults
+      operationId: tickSession
+      tags: [Sim]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                duration_s:
+                  type: number
+                  default: 60
+                  description: Time to advance in seconds
+      responses:
+        '200':
+          description: Updated session state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sim_time:
+                    type: string
+                    format: date-time
+                  satellites:
+                    type: array
+                    items:
+                      type: object
+                  new_events:
+                    type: array
+                    items:
+                      type: object
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sessions/{sessionId}/fault:
+    post:
+      summary: Inject fault
+      description: Inject a hardware or environment fault into a satellite in the session
+      operationId: injectFault
+      tags: [Sim]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [satellite_id, fault_type]
+              properties:
+                satellite_id:
+                  type: string
+                fault_type:
+                  type: string
+                  enum: [power_loss, thermal_exceedance, radiation_upset, comms_failure, isl_degradation]
+                severity:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  default: 0.5
+      responses:
+        '200':
+          description: Fault applied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  satellite_id:
+                    type: string
+                  fault_type:
+                    type: string
+                  severity:
+                    type: number
+                  effects:
+                    type: object
+        '404':
+          description: Session or satellite not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
